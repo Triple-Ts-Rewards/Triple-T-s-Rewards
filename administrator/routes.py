@@ -402,7 +402,7 @@ def review_sponsors():
     sponsors = Sponsor.query.filter_by(STATUS="Pending").all()
     return render_template("administrator/review_sponsor.html", sponsors=sponsors)
 
-@administrator_bp.route("/sponsors/<int:sponsor_id>/<decision>")
+@administrator_bp.route("/sponsors/<int:sponsor_id>/<decision>", methods=['POST'])
 @login_required
 @role_required(Role.ADMINISTRATOR)
 def sponsor_decision(sponsor_id, decision):
