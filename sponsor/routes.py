@@ -13,11 +13,44 @@ import string
 # Blueprint for sponsor-related routes
 sponsor_bp = Blueprint('sponsor_bp', __name__, template_folder="../templates")
 
-@sponsor_bp.get("/apply-for-organization", endpoint="apply_for_organization")
+@sponsor_bp.route("/apply-for-organization", methods=["GET", "POST"])
 @role_required(Role.SPONSOR)
 def apply_for_organization():
-    # TODO: render your application form or start the flow
-    return render_template("sponsor/apply_for_organization.html")
+    # Get the current sponsor record
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    
+    if request.method == 'POST':
+        org_name = request.form.get('org_name', '').strip()
+        
+        if not org_name:
+            flash("Organization name is required.", "danger")
+            return redirect(url_for('sponsor_bp.apply_for_organization'))
+        
+        try:
+            if sponsor:
+                # Update existing sponsor record
+                sponsor.ORG_ID = org_name
+                sponsor.STATUS = "Pending"  # Reset to pending for review
+            else:
+                # Create new sponsor record
+                sponsor = Sponsor(
+                    USER_CODE=current_user.USER_CODE,
+                    ORG_ID=org_name,
+                    STATUS="Pending"
+                )
+                db.session.add(sponsor)
+            
+            db.session.commit()
+            flash(f"Your application for organization '{org_name}' has been submitted for review.", "success")
+            
+        except Exception as e:
+            db.session.rollback()
+            flash("An error occurred while submitting your application.", "danger")
+        
+        return redirect(url_for('sponsor_bp.apply_for_organization'))
+    
+    # GET request - render the form
+    return render_template("sponsor/apply_for_organization.html", sponsor=sponsor)
 
 
 def driver_query_for_sponsor(organization_id):
@@ -114,9 +147,15 @@ def dashboard():
 @sponsor_bp.route('/settings', methods=['GET', 'POST'])
 @role_required(Role.SPONSOR, allow_admin=True)
 def update_settings():
-    settings = StoreSettings.query.filter_by(sponsor_id=current_user.USER_CODE).first()
+    # Get the sponsor's organization ID
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor:
+        flash("Sponsor record not found.", "danger")
+        return redirect(url_for('sponsor_bp.dashboard'))
+        
+    settings = StoreSettings.query.filter_by(ORG_ID=sponsor.ORG_ID).first()
     if not settings:
-        settings = StoreSettings(sponsor_id=current_user.USER_CODE)
+        settings = StoreSettings(ORG_ID=sponsor.ORG_ID)
         db.session.add(settings)
         db.session.commit()
 
@@ -196,8 +235,14 @@ def manage_points(driver_id):
         flash("Invalid request. Please provide an action (award/remove) and valid point amount.", "danger")
         return redirect(url_for('sponsor_bp.manage_points_page'))
 
+    # Get the sponsor record to access ORG_ID
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor:
+        flash("Sponsor record not found.", "danger")
+        return redirect(url_for('sponsor_bp.manage_points_page'))
+        
     association = DriverSponsorAssociation.query.filter_by(
-        driver_id=driver_id, sponsor_id=current_user.USER_CODE
+        driver_id=driver_id, ORG_ID=sponsor.ORG_ID
     ).first()
 
     if not association:
@@ -288,12 +333,17 @@ def add_user():
         new_driver = Driver(DRIVER_ID=new_driver_user.USER_CODE, LICENSE_NUMBER="000000") # Placeholder
         db.session.add(new_driver)
         
-        # Associate driver with sponsor
-        association = DriverSponsorAssociation(
-            driver_id=new_driver_user.USER_CODE,
-            sponsor_id=current_user.USER_CODE,
-            points=0
-        )
+        # Associate driver with sponsor's organization
+        sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+        if sponsor:
+            association = DriverSponsorAssociation(
+                driver_id=new_driver_user.USER_CODE,
+                ORG_ID=sponsor.ORG_ID,
+                points=0
+            )
+        else:
+            flash("Sponsor record not found.", "danger")
+            return redirect(url_for('sponsor_bp.dashboard'))
         db.session.add(association)
         db.session.commit()
 
@@ -356,21 +406,23 @@ def review_driver_applications():
 @login_required
 def driver_decision(app_id, decision):
     app = DriverApplication.query.get_or_404(app_id)
-    if app.sponsor.SPONSOR_ID != current_user.USER_CODE:
+    # Note: app.sponsor relationship may not exist anymore, check organization instead
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor or app.ORG_ID != sponsor.ORG_ID:
         flash("You do not have permission to modify this application.", "danger")
         return redirect(url_for("sponsor_bp.review_driver_applications"))
 
     if decision == "accept":
         app.STATUS = "Accepted"
-        # Associate driver with sponsor if not already associated
+        # Associate driver with organization if not already associated
         association = DriverSponsorAssociation.query.filter_by(
             driver_id=app.DRIVER_ID,
-            sponsor_id=app.SPONSOR_ID
+            ORG_ID=app.ORG_ID
         ).first()
         if not association:
             association = DriverSponsorAssociation(
                 driver_id=app.DRIVER_ID,
-                sponsor_id=app.SPONSOR_ID,
+                ORG_ID=app.ORG_ID,
                 points=0
             )
             db.session.add(association)
