@@ -174,7 +174,7 @@ class Driver(db.Model):
 class Sponsor(db.Model):
     __tablename__ = "SPONSORS"
 
-    # SPONSOR_ID now acts as both PK and FK → USERS.USER_CODE
+    # USER_CODDE now acts as both PK and FK → USERS.USER_CODE
     USER_CODE = db.Column(db.Integer, db.ForeignKey("USERS.USER_CODE"), primary_key=True)
     ORG_ID = db.Column(db.String(100))
     STATUS = db.Column(db.String(50))

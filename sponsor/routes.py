@@ -580,4 +580,4 @@ def change_password():
 def view_my_store():
     """Renders the truck rewards store for the currently logged-in sponsor."""
     # The template needs the sponsor's ID to fetch the correct products.
-    return render_template('driver/truck_rewards_store.html', sponsor_id=current_user.USER_CODE)
+    return render_template('driver/truck_rewards_store.html', USER_CODE=current_user.USER_CODE)
