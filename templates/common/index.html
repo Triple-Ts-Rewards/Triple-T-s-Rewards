@@ -3,5 +3,15 @@
 {% block title %}Home - TRIPLE T's Trucking Rewards{% endblock %}
 
 {% block content %}
-  <h1>TRIPLE T's TRUCKING REWARDS</h1>
+<div class="centered-content">
+    <h1>TRIPLE T's TRUCKING REWARDS</h1>
+    <h3>Welcome to TRIPLE T's TRUCKING REWARDS!</h3>
+
+    <h3>Login below to your account to start your reward's journey!</h3>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
+ 
+
+    <h3>New here? View our about page for more information about our services.</h3>
+    <a href="{{ url_for('about_bp.view_about') }}" class="btn btn-primary">Read Our About Page</a>
+</div>
 {% endblock %}
