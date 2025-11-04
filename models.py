@@ -181,12 +181,6 @@ class Sponsor(db.Model):
 
     user_account = db.relationship("User", back_populates="sponsor_profile")
 
-    driver_associations = db.relationship(
-        "DriverSponsorAssociation",
-        back_populates="sponsor",
-        cascade="all, delete-orphan"
-    )
-
     # applications = db.relationship(
     #    "DriverApplication",
     #    back_populates="sponsor",
@@ -221,7 +215,7 @@ class DriverSponsorAssociation(db.Model):
     points = db.Column(db.Integer, default=0)
 
     driver = db.relationship("Driver", back_populates="sponsor_associations")
-    sponsor = db.relationship("Sponsor", back_populates="driver_associations")
+    organization = db.relationship("Organization")
 
 
 
