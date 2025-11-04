@@ -16,3 +16,4 @@ cryptography==41.0.7
 pillow
 qrcode
 pyotp==2.8.0
+Flask-Mail==0.9.1

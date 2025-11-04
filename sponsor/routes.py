@@ -401,13 +401,13 @@ def update_info():
         # Basic phone validation (optional)
         if phone and (not phone.isdigit() or len(phone) < 10):
             flash('Please enter a valid phone number.', 'danger')
-            return redirect(url_for('sponsor_bp.update_contact'))
-
+            return redirect(url_for('sponsor_bp.update_info'))
+        
         # Check if phone already exists for another user
         if phone and User.query.filter(User.PHONE == phone, User.USER_CODE != current_user.USER_CODE).first():
             flash('Phone number already in use.', 'danger')
-            return redirect(url_for('sponsor_bp.update_contact'))
-
+            return redirect(url_for('sponsor_bp.update_info'))
+        
         try:
             current_user.EMAIL = email
             current_user.PHONE = phone

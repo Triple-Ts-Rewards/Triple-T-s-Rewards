@@ -77,6 +77,8 @@ def create_app():
         hours=24  # Check once per day
     )
 
+    mail.init_app(app)
+    
     return app
 
 @login_manager.user_loader

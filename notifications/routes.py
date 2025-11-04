@@ -83,19 +83,26 @@ def send_message():
             flash("No valid recipients found.", "warning")
             return redirect(url_for("notification_bp.send_message", role=role_filter))
 
-        rows = [
-            Notification(
-                RECIPIENT_CODE=rc,
-                SENDER_CODE=current_user.USER_CODE,
-                MESSAGE=body,
-                READ_STATUS=False,
-                TIMESTAMP=datetime.utcnow(),
+        #rows = [
+            #Notification(
+                #RECIPIENT_CODE=rc,
+                #SENDER_CODE=current_user.USER_CODE,
+                #MESSAGE=body,
+                #READ_STATUS=False,
+                #TIMESTAMP=datetime.utcnow(),
+            #)
+            #for (rc, _name) in recipients
+        #]
+
+        for (rc, _name) in recipients:
+            Notification.create_notification(
+                recipient_code=rc,
+                sender_code=current_user.USER_CODE,
+                message=body
             )
-            for (rc, _name) in recipients
-        ]
-        db.session.add_all(rows)
+        #db.session.add_all(rows)
         db.session.commit()
-        flash(f"Sent message to {len(rows)} user(s).", "success")
+        #flash(f"Sent message to {len(rows)} user(s).", "success")
         return redirect(url_for('notification_bp.notifications'))
 
     # GET: build checkbox list for current role filter
