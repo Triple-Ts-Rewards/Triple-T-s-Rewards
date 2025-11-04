@@ -13,6 +13,13 @@ import string
 # Blueprint for sponsor-related routes
 sponsor_bp = Blueprint('sponsor_bp', __name__, template_folder="../templates")
 
+@sponsor_bp.get("/apply-for-organization", endpoint="apply_for_organization")
+@role_required(Role.SPONSOR)
+def apply_for_organization():
+    # TODO: render your application form or start the flow
+    return render_template("sponsor/apply_for_organization.html")
+
+
 def driver_query_for_sponsor(organization_id):
     return db.session.query(User).filter(User.USER_TYPE == Role.DRIVER, User.ORG_ID == organization_id).all()
 
@@ -131,8 +138,8 @@ def manage_points_page():
     status_filter = request.args.get("status", "").strip()
 
     # Fetch all associations for this sponsor
-    sponsor = Sponsor.query.filter_by(SPONSOR_ID=current_user.USER_CODE).first()
-    associations = DriverSponsorAssociation.query.filter_by(sponsor_id=sponsor.SPONSOR_ID).all()
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    associations = DriverSponsorAssociation.query.filter_by(ORG_ID=sponsor.ORG_ID).all()
 
     # Combine driver user info with their points
     driver_data = [

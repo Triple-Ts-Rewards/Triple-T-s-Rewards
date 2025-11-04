@@ -62,7 +62,7 @@ class User(db.Model, UserMixin):
     EMAIL = db.Column(db.String(100), nullable=False)
     CREATED_AT = db.Column(db.DateTime, nullable=False)    
     PHONE = db.Column(db.String(15), nullable=True)
-    LOCKED_REASON = db.Column(db.String(100), nullable=True)
+    LOCKED_REASON = db.Column(db.String(255), nullable=True)
     wants_point_notifications = db.Column(db.Boolean, default=True, nullable=False)
     wants_order_notifications = db.Column(db.Boolean, default=True, nullable=False)
     wants_security_notifications = db.Column(db.Boolean, default=True, nullable=False)
@@ -73,7 +73,6 @@ class User(db.Model, UserMixin):
     # sponsor = db.relationship('Sponsor', backref='user', uselist=False, cascade="all, delete-orphan")
     driver_profile = db.relationship("Driver", back_populates="user_account", uselist=False)
     sponsor_profile = db.relationship("Sponsor", back_populates="user_account", uselist=False)
-    wants_security_notifications = db.Column(db.Boolean, default=True, nullable=False)
 
     #User account
     IS_ACTIVE = db.Column(db.Integer, nullable=False)
@@ -82,7 +81,6 @@ class User(db.Model, UserMixin):
     RESET_TOKEN = db.Column(db.String(255), nullable=True, index=True)
     RESET_TOKEN_CREATED_AT = db.Column(db.DateTime, nullable=True)
     IS_LOCKED_OUT = db.Column(db.Integer, nullable=False)
-    LOCKED_REASON = db.Column(db.String(255), nullable=True)
     EMAIL_VERIFIED    = db.Column(db.Boolean, default=False)
     EMAIL_2FA_ENABLED = db.Column(db.Boolean, default=False)
 
@@ -162,8 +160,15 @@ class User(db.Model, UserMixin):
 class Driver(db.Model):
     __tablename__ = 'DRIVERS'
     DRIVER_ID = db.Column(db.Integer, db.ForeignKey("USERS.USER_CODE", ondelete="CASCADE"), primary_key=True)
+    user_account = db.relationship("User", back_populates="driver_profile",uselist=False)
     LICENSE_NUMBER = db.Column(db.String(50), nullable=False)
     # points = db.Column(db.Integer, default=0, nullable=False)
+    
+    sponsor_associations = db.relationship(
+        "DriverSponsorAssociation",
+        back_populates="driver",
+        cascade="all, delete-orphan"
+    )
     applications = db.relationship("DriverApplication", back_populates="driver")
 
 class Sponsor(db.Model):
@@ -182,11 +187,11 @@ class Sponsor(db.Model):
         cascade="all, delete-orphan"
     )
 
-    applications = db.relationship(
-        "DriverApplication",
-        back_populates="sponsor",
-        cascade="all, delete-orphan"
-    )
+    # applications = db.relationship(
+    #    "DriverApplication",
+    #    back_populates="sponsor",
+    #    cascade="all, delete-orphan"
+    #)
 
 
 
@@ -199,12 +204,13 @@ class DriverApplication(db.Model):
     __tablename__ = "DRIVER_APPLICATIONS"
     APPLICATION_ID = db.Column(db.Integer, primary_key=True, autoincrement=True)
     DRIVER_ID = db.Column(db.Integer, db.ForeignKey("DRIVERS.DRIVER_ID", ondelete="CASCADE"))
-    ORG_ID = db.Column(db.Integer, db.ForeignKey("SPONSORS.ORG_ID", ondelete="CASCADE"))
+    ORG_ID = db.Column(db.Integer, db.ForeignKey("ORGANIZATIONS.ORG_ID", ondelete="CASCADE"))
     STATUS = db.Column(db.Enum("Pending", "Accepted", "Rejected", name="DRIVER_APPLICATION_STATUS"), default="Pending")
     REASON = db.Column(db.String(255))
     APPLIED_AT = db.Column(db.DateTime, server_default=db.func.now())
     LICENSE_NUMBER = db.Column(db.String(50), nullable=True)
     driver = db.relationship("Driver", back_populates="applications")
+    #sponsor = db.relationship("Sponsor", back_populates="applications")
     organization = db.relationship("Organization", backref="driver_applications")
 
 class DriverSponsorAssociation(db.Model):
@@ -222,7 +228,7 @@ class DriverSponsorAssociation(db.Model):
 class StoreSettings(db.Model):
     __tablename__ = 'STORE_SETTINGS'
     id = db.Column(db.Integer, primary_key=True)
-    sponsor_id = db.Column(db.Integer, db.ForeignKey('SPONSORS.SPONSOR_ID'), nullable=False, unique=True)
+    sponsor_id = db.Column(db.Integer, db.ForeignKey('SPONSORS.USER_CODE'), nullable=False, unique=True)
     ebay_category_id = db.Column(db.String(50), nullable=False, default='2984')
     point_ratio = db.Column(db.Integer, nullable=False, default=10)
 
@@ -230,7 +236,7 @@ class CartItem(db.Model):
     __tablename__ = 'CART_ITEMS'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('USERS.USER_CODE'), nullable=False)
-    sponsor_id = db.Column(db.Integer, db.ForeignKey('SPONSORS.SPONSOR_ID'), nullable=False)
+    sponsor_id = db.Column(db.Integer, db.ForeignKey('SPONSORS.USER_CODE'), nullable=False)
     item_id = db.Column(db.String(255), nullable=False)
     title = db.Column(db.String(255), nullable=False)
     price = db.Column(db.Float, nullable=False)
