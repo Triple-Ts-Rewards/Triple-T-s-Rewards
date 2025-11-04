@@ -270,7 +270,7 @@ def add_user():
             driver = Driver(DRIVER_ID=new_user.USER_CODE, LICENSE_NUMBER="temp_license")
             db.session.add(driver)
         elif role == "sponsor":
-            sponsor = Sponsor(SPONSOR_ID=new_user.USER_CODE, ORG_NAME="Temp Org", STATUS="Pending")
+            sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_NAME="Temp Org", STATUS="Pending")
             db.session.add(sponsor)
         elif role == "admin":
             admin = Admin(ADMIN_ID=new_user.USER_CODE)
@@ -468,11 +468,11 @@ def review_sponsors():
     sponsors = Sponsor.query.filter_by(STATUS="Pending").all()
     return render_template("administrator/review_sponsor.html", sponsors=sponsors)
 
-@administrator_bp.route("/sponsors/<int:sponsor_id>/<decision>")
+@administrator_bp.route("/sponsors/<int:USER_CODE>/<decision>")
 @login_required
 @role_required(Role.ADMINISTRATOR)
-def sponsor_decision(sponsor_id, decision):
-    sponsor = Sponsor.query.get_or_404(sponsor_id)
+def sponsor_decision(USER_CODE, decision):
+    sponsor = Sponsor.query.get_or_404(USER_CODE)
     if decision == "approve":
         sponsor.STATUS = "Approved"
         # Removed: if sponsor_user: sponsor_user.IS_ACTIVE = 1 

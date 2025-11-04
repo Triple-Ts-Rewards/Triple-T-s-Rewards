@@ -24,7 +24,7 @@
                 <ul class="list-group">
                     {% for assoc in associations %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <a href="{{ url_for('driver_bp.truck_rewards_store', sponsor_id=assoc.sponsor_id) }}">
+                            <a href="{{ url_for('driver_bp.truck_rewards_store', ORG_ID=assoc.ORG_ID) }}">
                                 {{ assoc.sponsor.ORG_NAME }}
                             </a>
                             <span class="badge bg-primary rounded-pill">{{ assoc.points }} points</span>

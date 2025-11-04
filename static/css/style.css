@@ -407,6 +407,12 @@ input:checked + .slider::before {
    }
    
    .container { max-width: 1200px; margin: 0 auto; }
+
+   .centered-content {
+    text-align: center;
+    
+    padding: 20px;
+   }
    
    .site-footer {
      background: var(--nav-bg);

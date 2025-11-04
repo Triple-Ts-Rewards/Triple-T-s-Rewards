@@ -226,7 +226,7 @@ def change_password():
 @login_required
 def apply_driver():
     # Get all organizations that have approved sponsors
-    organizations = Organization.query.join(Sponsor).filter(Sponsor.STATUS == "Approved").all()
+    organizations = Organization.query.join(Sponsor, Organization.ORG_ID == Sponsor.ORG_ID).filter(Sponsor.STATUS == "Approved").all()
 
     if request.method == "POST":
         org_id = request.form["org_id"]
@@ -252,17 +252,6 @@ def apply_driver():
             db.session.add(application)
             db.session.commit()
             flash("Application submitted successfully! Await sponsor review.", "success")
-
-        application = DriverApplication(
-            DRIVER_ID=current_user.USER_CODE,
-            SPONSOR_ID=sponsor_id,
-            REASON=reason,
-            STATUS="Pending",
-            LICENSE_NUMBER=license_number
-        )
-        db.session.add(application)
-        db.session.commit()
-        flash("Application submitted successfully! Await sponsor review.", "success")
         return redirect(url_for("driver_bp.dashboard"))
 
     return render_template("driver/driver_app.html", organizations=organizations)
@@ -328,17 +317,17 @@ def set_default_address(address_id):
     return redirect(url_for('driver_bp.addresses'))
 
 
-@driver_bp.route('/truck_rewards_store/<int:sponsor_id>')
+@driver_bp.route('/truck_rewards_store/<int:org_id>')
 @role_required(Role.DRIVER)
-def truck_rewards_store(sponsor_id):
-    association = DriverSponsorAssociation.query.filter_by(driver_id=current_user.USER_CODE, sponsor_id=sponsor_id).first()
+def truck_rewards_store(org_id):
+    association = DriverSponsorAssociation.query.filter_by(driver_id=current_user.USER_CODE, ORG_ID=org_id).first()
     if not association:
-        flash("You do not have access to this sponsor's store.", "danger")
+        flash("You do not have access to this organization's store.", "danger")
         return redirect(url_for('driver_bp.dashboard'))
 
-    # Proceed to show the store for the given sponsor
+    # Proceed to show the store for the given organization
     # You will need a template for this.
-    return render_template('driver/truck_rewards_store.html', sponsor_id=sponsor_id)
+    return render_template('driver/truck_rewards_store.html', org_id=org_id)
 
 @driver_bp.route('/redirect_to_store')
 @login_required
@@ -352,10 +341,10 @@ def redirect_to_store():
     association = DriverSponsorAssociation.query.filter_by(driver_id=current_user.USER_CODE).first()
 
     if association:
-        # If a sponsor is found, redirect to their store.
-        return redirect(url_for('driver_bp.truck_rewards_store', sponsor_id=association.sponsor_id))
+        # If an organization is found, redirect to their store.
+        return redirect(url_for('driver_bp.truck_rewards_store', org_id=association.ORG_ID))
     else:
-        # If no sponsors are found, send them to the application page with a helpful message.
+        # If no organizations are found, send them to the application page with a helpful message.
         flash("You are not yet a member of any sponsor organizations. Apply to one to get access to a store!", "info")
         return redirect(url_for('driver_bp.apply_driver'))
     
@@ -371,9 +360,9 @@ def redirect_to_cart():
     association = DriverSponsorAssociation.query.filter_by(driver_id=current_user.USER_CODE).first()
 
     if association:
-        # If a sponsor is found, redirect to their cart page.
-        return redirect(url_for('rewards_bp.view_cart', sponsor_id=association.sponsor_id))
+        # If an organization is found, redirect to their cart page.
+        return redirect(url_for('rewards_bp.view_cart', org_id=association.ORG_ID))
     else:
-        # If no sponsors are found, send them to the application page with a helpful message.
+        # If no organizations are found, send them to the application page with a helpful message.
         flash("You must join a sponsor's organization to have a cart.", "info")
         return redirect(url_for('driver_bp.apply_driver'))

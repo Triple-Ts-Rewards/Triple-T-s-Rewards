@@ -16,17 +16,17 @@
         <tbody>
             {% for sponsor in sponsors %}
             <tr>
-                <td>{{ sponsor.SPONSOR_ID }}</td>
+                <td>{{ sponsor.USER_CODE }}</td>
                 <td>{{ sponsor.ORG_NAME }}</td>
                 <td>
                     {# Approve Form (Uses POST) #}
-                    <form method="POST" action="{{ url_for('administrator_bp.sponsor_decision', sponsor_id=sponsor.SPONSOR_ID, decision='approve') }}" style="display:inline;">
+                    <form method="POST" action="{{ url_for('administrator_bp.sponsor_decision', USER_CODE=sponsor.USER_CODE, decision='approve') }}" style="display:inline;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-sm btn-success">Approve</button>
                     </form>
                     
                     {# Reject Form (Uses POST) #}
-                    <form method="POST" action="{{ url_for('administrator_bp.sponsor_decision', sponsor_id=sponsor.SPONSOR_ID, decision='reject') }}" style="display:inline;">
+                    <form method="POST" action="{{ url_for('administrator_bp.sponsor_decision', USER_CODE=sponsor.USER_CODE, decision='reject') }}" style="display:inline;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-sm btn-danger">Reject</button>
                     </form>

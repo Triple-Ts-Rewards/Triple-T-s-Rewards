@@ -47,7 +47,7 @@
                            class="form-control" 
                            id="org_name" 
                            name="org_name" 
-                           value="{{ sponsor.ORG_NAME if sponsor.ORG_NAME else '' }}" 
+                           value="{{ sponsor.ORG_ID if sponsor and sponsor.ORG_ID else '' }}" 
                            required 
                            placeholder="e.g., Triple-T Trucking Rewards">
                     <div class="form-text">This is the name drivers will see when applying for sponsorship.</div>
