@@ -226,7 +226,7 @@ def change_password():
 @login_required
 def apply_driver():
     # Get all organizations that have approved sponsors
-    organizations = Organization.query.join(Sponsor).filter(Sponsor.STATUS == "Approved").all()
+    organizations = Organization.query.join(Sponsor, Organization.ORG_ID == Sponsor.ORG_ID).filter(Sponsor.STATUS == "Approved").all()
 
     if request.method == "POST":
         org_id = request.form["org_id"]
