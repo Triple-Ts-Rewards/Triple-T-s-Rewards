@@ -217,7 +217,7 @@ class DriverSponsorAssociation(db.Model):
     __tablename__ = "DRIVER_SPONSOR_ASSOCIATION"
 
     driver_id = db.Column(db.Integer, db.ForeignKey("DRIVERS.DRIVER_ID"), primary_key=True)
-    sponsor_id = db.Column(db.Integer, db.ForeignKey("SPONSORS.USER_CODE"), primary_key=True)
+    ORG_ID = db.Column(db.Integer, db.ForeignKey("ORGANIZATIONS.ORG_ID"), primary_key=True)
     points = db.Column(db.Integer, default=0)
 
     driver = db.relationship("Driver", back_populates="sponsor_associations")
@@ -228,7 +228,7 @@ class DriverSponsorAssociation(db.Model):
 class StoreSettings(db.Model):
     __tablename__ = 'STORE_SETTINGS'
     id = db.Column(db.Integer, primary_key=True)
-    sponsor_id = db.Column(db.Integer, db.ForeignKey('SPONSORS.USER_CODE'), nullable=False, unique=True)
+    ORG_ID = db.Column(db.Integer, db.ForeignKey('ORGANIZATIONS.ORG_ID'), nullable=False, unique=True)
     ebay_category_id = db.Column(db.String(50), nullable=False, default='2984')
     point_ratio = db.Column(db.Integer, nullable=False, default=10)
 
@@ -236,7 +236,7 @@ class CartItem(db.Model):
     __tablename__ = 'CART_ITEMS'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('USERS.USER_CODE'), nullable=False)
-    sponsor_id = db.Column(db.Integer, db.ForeignKey('SPONSORS.USER_CODE'), nullable=False)
+    ORG_ID = db.Column(db.Integer, db.ForeignKey('ORGANIZATIONS.ORG_ID'), nullable=False)
     item_id = db.Column(db.String(255), nullable=False)
     title = db.Column(db.String(255), nullable=False)
     price = db.Column(db.Float, nullable=False)
