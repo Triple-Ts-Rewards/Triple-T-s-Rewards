@@ -12,7 +12,7 @@
   {# The sponsor's name could be passed from the backend for a more personal touch #}
   <h1>Sponsor Rewards Store</h1>
   <p>Your points for this store are specific to this sponsor.</p>
-  <a href="{{ url_for('rewards_bp.view_cart', org_id=org_id) }}" class="btn btn-primary mb-3">View Your Cart</a>
+  <a href="{{ url_for('rewards_bp.view_cart', sponsor_id=sponsor_id) }}" class="btn btn-primary mb-3">View Your Cart</a>
 
   {# This token is important for making secure POST requests (e.g., adding to cart) #}
   <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token() }}">
