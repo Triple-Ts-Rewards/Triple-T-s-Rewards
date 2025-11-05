@@ -579,5 +579,15 @@ def change_password():
 @role_required(Role.SPONSOR, allow_admin=True)
 def view_my_store():
     """Renders the truck rewards store for the currently logged-in sponsor."""
-    # The template needs the sponsor's ID to fetch the correct products.
-    return render_template('driver/truck_rewards_store.html', USER_CODE=current_user.USER_CODE)
+    # Get the sponsor record to access ORG_ID
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor:
+        flash("Sponsor record not found.", "danger")
+        return redirect(url_for('sponsor_bp.dashboard'))
+    
+    # The template needs the sponsor's organization ID to fetch the correct products
+    return render_template('driver/truck_rewards_store.html', 
+                         USER_CODE=current_user.USER_CODE,
+                         sponsor_id=sponsor.ORG_ID,
+                         ORG_ID=sponsor.ORG_ID,
+                         org_id=sponsor.ORG_ID)
