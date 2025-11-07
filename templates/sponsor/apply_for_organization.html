@@ -10,29 +10,29 @@
         <div class="card-body p-4">
 
             {# Logic to display current status and organization name #}
-            {% if sponsor %}
+            {% if sponsor and sponsor.organization %}
                 <p class="text-center mb-4">
                     Your current organization status is: 
                     <span class="badge 
-                        {% if sponsor.STATUS == 'Approved' %} bg-success 
-                        {% elif sponsor.STATUS == 'Rejected' %} bg-danger 
+                        {% if sponsor.organization.STATUS == 'Approved' %} bg-success 
+                        {% elif sponsor.organization.STATUS == 'Rejected' %} bg-danger 
                         {% else %} bg-warning text-dark {% endif %}
                         p-2 fs-6">
-                        {{ sponsor.STATUS }}
+                        {{ sponsor.organization.STATUS }}
                     </span>
                 </p>
                 
-                {% if sponsor.STATUS == 'Approved' %}
+                {% if sponsor.organization.STATUS == 'Approved' %}
                     <div class="alert alert-success text-center" role="alert">
-                        Your organization is **APPROVED**! Use this form to update your organization name if necessary.
+                        Your organization "{{ sponsor.organization.ORG_NAME }}" is **APPROVED**! Use this form to update your organization name if necessary.
                     </div>
-                {% elif sponsor.STATUS == 'Pending' %}
+                {% elif sponsor.organization.STATUS == 'Pending' %}
                     <div class="alert alert-info text-center" role="alert">
-                        Your application is currently **PENDING** review by the administrator. Thank you for your patience!
+                        Your application for "{{ sponsor.organization.ORG_NAME }}" is currently **PENDING** review by the administrator. Thank you for your patience!
                     </div>
-                {% elif sponsor.STATUS == 'Rejected' %}
+                {% elif sponsor.organization.STATUS == 'Rejected' %}
                     <div class="alert alert-danger text-center" role="alert">
-                        Your previous application was **REJECTED**. Please submit a new organization name below.
+                        Your previous application for "{{ sponsor.organization.ORG_NAME }}" was **REJECTED**. Please submit a new organization name below.
                     </div>
                 {% endif %}
 
@@ -47,7 +47,7 @@
                            class="form-control" 
                            id="org_name" 
                            name="org_name" 
-                           value="{{ sponsor.ORG_ID if sponsor and sponsor.ORG_ID else '' }}" 
+                           value="{{ sponsor.organization.ORG_NAME if sponsor and sponsor.organization else '' }}" 
                            required 
                            placeholder="e.g., Triple-T Trucking Rewards">
                     <div class="form-text">This is the name drivers will see when applying for sponsorship.</div>

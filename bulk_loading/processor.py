@@ -236,8 +236,7 @@ class BulkLoadProcessor:
             # Create the sponsor
             new_sponsor = Sponsor(
                 USER_CODE=new_user.USER_CODE,
-                ORG_ID=existing_org.ORG_ID,
-                STATUS="Pending"
+                ORG_ID=existing_org.ORG_ID
             )
             
             db.session.add(new_sponsor)
@@ -471,8 +470,7 @@ class BulkLoadProcessor:
             # Create the sponsor
             new_sponsor = Sponsor(
                 USER_CODE=new_user.USER_CODE,
-                ORG_ID=organization.ORG_ID,
-                STATUS="Pending"
+                ORG_ID=organization.ORG_ID
             )
             
             db.session.add(new_sponsor)

@@ -10,7 +10,7 @@ from common.logging import (LOGIN_EVENT,
 from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event)
 from datetime import datetime
 from datetime import datetime, timedelta
-from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog
+from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization
 import csv
 from io import StringIO
 from audit_types import AUDIT_CATEGORIES
@@ -270,7 +270,16 @@ def add_user():
             driver = Driver(DRIVER_ID=new_user.USER_CODE, LICENSE_NUMBER="temp_license")
             db.session.add(driver)
         elif role == "sponsor":
-            sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_NAME="Temp Org", STATUS="Pending")
+            # Create a temporary organization for this sponsor
+            temp_org = Organization(
+                ORG_NAME="Temp Organization - " + new_user.USERNAME,
+                STATUS="Pending",
+                CREATED_AT=datetime.utcnow()
+            )
+            db.session.add(temp_org)
+            db.session.flush()  # Get the ORG_ID
+            
+            sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=temp_org.ORG_ID)
             db.session.add(sponsor)
         elif role == "admin":
             admin = Admin(ADMIN_ID=new_user.USER_CODE)
@@ -465,22 +474,21 @@ def reset_user_password(user_id):
 @login_required
 @role_required(Role.ADMINISTRATOR)
 def review_sponsors():
-    sponsors = Sponsor.query.filter_by(STATUS="Pending").all()
-    return render_template("administrator/review_sponsor.html", sponsors=sponsors)
+    # Get all organizations with pending status
+    pending_organizations = Organization.query.filter_by(STATUS="Pending").all()
+    return render_template("administrator/review_sponsor.html", organizations=pending_organizations)
 
-@administrator_bp.route("/sponsors/<int:USER_CODE>/<decision>")
+@administrator_bp.route("/sponsors/<int:ORG_ID>/<decision>", methods=["POST"])
 @login_required
 @role_required(Role.ADMINISTRATOR)
-def sponsor_decision(USER_CODE, decision):
-    sponsor = Sponsor.query.get_or_404(USER_CODE)
+def sponsor_decision(ORG_ID, decision):
+    organization = Organization.query.get_or_404(ORG_ID)
     if decision == "approve":
-        sponsor.STATUS = "Approved"
-        # Removed: if sponsor_user: sponsor_user.IS_ACTIVE = 1 
-        flash(f"Sponsor '{sponsor.ORG_NAME}' approved!", "success") 
+        organization.STATUS = "Approved"
+        flash(f"Organization '{organization.ORG_NAME}' approved!", "success") 
     elif decision == "reject":
-        sponsor.STATUS = "Rejected"
-        # Removed: if sponsor_user: sponsor_user.IS_ACTIVE = 0
-        flash(f"Sponsor '{sponsor.ORG_NAME}' rejected.", "warning") 
+        organization.STATUS = "Rejected"
+        flash(f"Organization '{organization.ORG_NAME}' rejected.", "warning") 
     else:
         flash("Invalid decision.", "danger")
         return redirect(url_for("administrator_bp.review_sponsors"))
