@@ -72,7 +72,7 @@ class User(db.Model, UserMixin):
     wishlist_items = db.relationship('WishlistItem', backref='user', lazy=True, cascade="all, delete-orphan")
     # sponsor = db.relationship('Sponsor', backref='user', uselist=False, cascade="all, delete-orphan")
     driver_profile = db.relationship("Driver", back_populates="user_account", uselist=False)
-    sponsor_profile = db.relationship("Sponsor", back_populates="user_account", uselist=False)
+    sponsor = db.relationship("Sponsor", back_populates="user", uselist=False)
 
     #User account
     IS_ACTIVE = db.Column(db.Integer, nullable=False)
@@ -174,12 +174,12 @@ class Driver(db.Model):
 class Sponsor(db.Model):
     __tablename__ = "SPONSORS"
 
-    # USER_CODDE now acts as both PK and FK → USERS.USER_CODE
+    # USER_CODE now acts as both PK and FK → USERS.USER_CODE
     USER_CODE = db.Column(db.Integer, db.ForeignKey("USERS.USER_CODE"), primary_key=True)
-    ORG_ID = db.Column(db.String(100))
-    STATUS = db.Column(db.String(50))
+    ORG_ID = db.Column(db.Integer, db.ForeignKey("ORGANIZATIONS.ORG_ID"))
 
-    user_account = db.relationship("User", back_populates="sponsor_profile")
+    user = db.relationship("User", back_populates="sponsor")
+    organization = db.relationship("Organization", backref="sponsors")
 
     # applications = db.relationship(
     #    "DriverApplication",
@@ -342,6 +342,7 @@ class Organization(db.Model):
     ORG_ID = db.Column(db.Integer, primary_key=True, autoincrement=True)
     ORG_NAME = db.Column(db.String(100), unique=True, nullable=False)
     CREATED_AT = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    STATUS = db.Column(db.Enum('Pending', 'Approved', 'Rejected'), default='Pending', nullable=True)
 
 class ImpersonationLog(db.Model):
     __tablename__ = 'IMPERSONATION_LOG'

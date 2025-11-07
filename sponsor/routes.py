@@ -5,7 +5,7 @@ from common.decorators import role_required
 from common.logging import log_audit_event, DRIVER_POINTS
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
-from models import User, Role, StoreSettings, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver
+from models import User, Role, StoreSettings, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization
 from extensions import db, bcrypt
 import secrets
 import string
@@ -27,21 +27,40 @@ def apply_for_organization():
             return redirect(url_for('sponsor_bp.apply_for_organization'))
         
         try:
-            if sponsor:
-                # Update existing sponsor record
-                sponsor.ORG_ID = org_name
-                sponsor.STATUS = "Pending"  # Reset to pending for review
+            # Check if organization already exists
+            existing_org = Organization.query.filter_by(ORG_NAME=org_name).first()
+            
+            if existing_org:
+                # Organization exists, link sponsor to it
+                org_id = existing_org.ORG_ID
+                # If organization is already approved, sponsor is immediately approved
+                if existing_org.STATUS == "Approved":
+                    flash(f"You have been linked to the approved organization '{org_name}'.", "success")
+                else:
+                    flash(f"You have been linked to organization '{org_name}'. Status: {existing_org.STATUS}", "info")
             else:
-                # Create new sponsor record
+                # Create new organization with pending status
+                new_org = Organization(
+                    ORG_NAME=org_name,
+                    STATUS="Pending",
+                    CREATED_AT=datetime.utcnow()
+                )
+                db.session.add(new_org)
+                db.session.flush()  # Get the ORG_ID
+                org_id = new_org.ORG_ID
+                flash(f"New organization '{org_name}' created and submitted for review.", "success")
+            
+            # Update or create sponsor record
+            if sponsor:
+                sponsor.ORG_ID = org_id
+            else:
                 sponsor = Sponsor(
                     USER_CODE=current_user.USER_CODE,
-                    ORG_ID=org_name,
-                    STATUS="Pending"
+                    ORG_ID=org_id
                 )
                 db.session.add(sponsor)
             
             db.session.commit()
-            flash(f"Your application for organization '{org_name}' has been submitted for review.", "success")
             
         except Exception as e:
             db.session.rollback()

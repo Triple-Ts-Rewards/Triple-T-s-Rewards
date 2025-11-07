@@ -225,8 +225,8 @@ def change_password():
 @driver_bp.route("/driver_app", methods=["GET", "POST"])
 @login_required
 def apply_driver():
-    # Get all organizations that have approved sponsors
-    organizations = Organization.query.join(Sponsor, Organization.ORG_ID == Sponsor.ORG_ID).filter(Sponsor.STATUS == "Approved").all()
+    # Get all approved organizations
+    organizations = Organization.query.filter(Organization.STATUS == "Approved").all()
 
     if request.method == "POST":
         org_id = request.form["org_id"]
