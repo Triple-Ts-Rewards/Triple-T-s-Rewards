@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Sponsor Information - {{ organization.ORG_NAME }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Sponsor Information - {{ organization.ORG_NAME }}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h5 class="text-muted mb-1">Organization Status</h5>
+                            <span class="badge 
+                                {% if organization.STATUS == 'Approved' %}bg-success
+                                {% elif organization.STATUS == 'Pending' %}bg-warning text-dark
+                                {% else %}bg-danger{% endif %} fs-6 p-2">
+                                {{ organization.STATUS }}
+                            </span>
+                        </div>
+                        <div class="text-end">
+                            <h5 class="text-muted mb-1">Your Points</h5>
+                            <span class="badge bg-primary fs-5 p-2">{{ driver_association.points }} points</span>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h4 class="mb-3">
+                        <i class="fas fa-address-book me-2"></i>
+                        Sponsor Contacts
+                    </h4>
+
+                    {% if sponsors %}
+                        <div class="row">
+                            {% for sponsor, user in sponsors %}
+                                <div class="col-md-6 mb-4">
+                                    <div class="card border-left-primary">
+                                        <div class="card-body">
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
+                                                     style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                                    {{ user.FNAME[0] }}{{ user.LNAME[0] }}
+                                                </div>
+                                                <div>
+                                                    <h5 class="card-title mb-0">{{ user.FNAME }} {{ user.LNAME }}</h5>
+                                                    <small class="text-muted">Sponsor</small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="contact-info">
+                                                <div class="mb-2">
+                                                    <i class="fas fa-envelope text-primary me-2"></i>
+                                                    <strong>Email:</strong>
+                                                    <br>
+                                                    <a href="mailto:{{ user.EMAIL }}" class="text-decoration-none">
+                                                        {{ user.EMAIL }}
+                                                    </a>
+                                                </div>
+                                                
+                                                {% if user.PHONE %}
+                                                    <div class="mb-2">
+                                                        <i class="fas fa-phone text-primary me-2"></i>
+                                                        <strong>Phone:</strong>
+                                                        <br>
+                                                        <a href="tel:{{ user.PHONE }}" class="text-decoration-none">
+                                                            {{ user.PHONE }}
+                                                        </a>
+                                                    </div>
+                                                {% endif %}
+                                                
+                                                <div class="mb-2">
+                                                    <i class="fas fa-user-check text-primary me-2"></i>
+                                                    <strong>Status:</strong>
+                                                    <br>
+                                                    <span class="badge bg-info">{{ sponsor.STATUS or 'Active' }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No sponsors found for this organization.
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('driver_bp.sponsor_info_select') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            Back to Organizations
+                        </a>
+                        <a href="{{ url_for('driver_bp.dashboard') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-home me-1"></i>
+                            Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.border-left-primary {
+    border-left: 4px solid #007bff !important;
+}
+
+.avatar {
+    font-weight: bold;
+}
+
+.contact-info {
+    font-size: 0.95rem;
+}
+
+.contact-info a:hover {
+    text-decoration: underline !important;
+}
+</style>
+{% endblock %}
