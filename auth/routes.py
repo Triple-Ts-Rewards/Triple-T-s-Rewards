@@ -6,7 +6,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 import pyotp
 import qrcode
 import auth
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from common.second_factor import create_email_code, verify_email_code, send_email
 from models import User, Role, Notification  # Role has DRIVER, SPONSOR, ADMINISTRATOR
 from datetime import datetime, timedelta
@@ -351,11 +351,12 @@ def reset_password():
         
         token = user.generate_reset_token()
         db.session.commit()
-        
         reset_url = url_for("auth.reset_token", token=token, _external=True)
-        flash(f"Password reset link (valid for {RESET_TOKEN_TTL_MINUTES} minutes): {reset_url}", "info")
         log_audit_event("RESET REQUEST", f"Password reset requested for user {user.USERNAME}.")
-        return redirect(url_for("auth.reset_password"))
+        
+        # Return JSON with the reset link
+        return jsonify(reset_url=reset_url), 200
+
     return render_template("common/reset_password.html")
 
 def reset_request():
