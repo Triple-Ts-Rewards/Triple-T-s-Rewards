@@ -4,7 +4,7 @@
   <div style="display:flex; align-items:center; justify-content:space-between;">
     <h1>{{ title }}</h1>
     <a class="btn"
-       href="{{ url_for('administrator_bp.export_audit_csv', event_type=event_type, start=start, end=end) }}">
+       href="{{ url_for('administrator_bp.export_audit_csv') }}{% if url_params_qs %}?{{ url_params_qs }}{% endif %}">
       ⬇︎ Download CSV
     </a>
   </div>
@@ -40,6 +40,39 @@
         {% endfor %}
       </tbody>
     </table>
+  {% endif %}
+
+  {# ✅ PAGINATION SECTION GOES HERE #}
+  {% if pagination and pagination.pages > 1 %}
+    {% macro page_href(n) -%}
+      {{ base_url }}{% if url_params_qs %}?{{ url_params_qs }}&page={{ n }}{% else %}?page={{ n }}{% endif %}
+    {%- endmacro %}
+
+    <nav class="pager" aria-label="Pagination" style="margin-top:1rem; display:flex; gap:.4rem; flex-wrap:wrap;">
+      <a class="page-btn {{ '' if pagination.has_prev else 'disabled' }}"
+         href="{{ page_href(1) if pagination.has_prev else '#' }}">« First</a>
+
+      <a class="page-btn {{ '' if pagination.has_prev else 'disabled' }}"
+         href="{{ page_href(pagination.prev_num) if pagination.has_prev else '#' }}">‹ Prev</a>
+
+      {% set start_p = 1 if pagination.page <= 3 else pagination.page - 2 %}
+      {% set end_p = pagination.pages if pagination.page + 2 >= pagination.pages else pagination.page + 2 %}
+      {% for p in range(start_p, end_p + 1) %}
+        <a class="page-btn {{ 'active' if p == pagination.page else '' }}" href="{{ page_href(p) }}">{{ p }}</a>
+      {% endfor %}
+
+      <a class="page-btn {{ '' if pagination.has_next else 'disabled' }}"
+         href="{{ page_href(pagination.next_num) if pagination.has_next else '#' }}">Next ›</a>
+
+      <a class="page-btn {{ '' if pagination.has_next else 'disabled' }}"
+         href="{{ page_href(pagination.pages) if pagination.has_next else '#' }}">Last »</a>
+    </nav>
+
+    <style>
+      .page-btn { padding:.35rem .6rem; border:1px solid var(--border); border-radius:.35rem; text-decoration:none; }
+      .page-btn.active { font-weight:700; }
+      .page-btn.disabled { pointer-events:none; opacity:.5; }
+    </style>
   {% endif %}
 
   <p style="margin-top:1rem;">
