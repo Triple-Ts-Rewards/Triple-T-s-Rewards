@@ -361,7 +361,7 @@ def redirect_to_cart():
 
     if association:
         # If an organization is found, redirect to their cart page.
-        return redirect(url_for('rewards_bp.view_cart', org_id=association.ORG_ID))
+        return redirect(url_for('rewards_bp.view_cart', sponsor_id=association.ORG_ID))
     else:
         # If no organizations are found, send them to the application page with a helpful message.
         flash("You must join a sponsor's organization to have a cart.", "info")

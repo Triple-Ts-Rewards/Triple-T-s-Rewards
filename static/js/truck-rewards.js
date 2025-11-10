@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.target && event.target.classList.contains('add-to-cart-btn')) {
       const productData = JSON.parse(event.target.dataset.product.replace(/&apos;/g, "'"));
 
-      const sponsorId = document.getElementById('sponsor_id').value;
+      const sponsorId = document.getElementById('org_id').value;
       
       addToCart(productData, sponsorId);
     }
