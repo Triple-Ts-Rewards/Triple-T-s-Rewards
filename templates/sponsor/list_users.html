@@ -25,7 +25,8 @@
   <p class="muted">No sponsor users yet.</p>
 {% endif %}
 
-<p style="margin-top:1rem;">
+<p style="margin-top:1rem; display: flex; gap: 1rem; align-items: center;">
   <a class="btn btn-primary" href="{{ url_for('sponsor_bp.create_sponsor_user') }}">+ New Sponsor User</a>
+  <a class="btn btn-outline" href="{{ url_for('sponsor_bp.dashboard') }}">← Back to Sponsor Dashboard</a>
 </p>
 {% endblock %}

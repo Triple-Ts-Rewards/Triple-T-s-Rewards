@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="centered-content login-page">
+  <div class="apply-form" style="max-width: 48rem; width: 60%;">
+    <h1>Create Driver Account</h1>
+
+    <!-- 
+        NOTE: The action points to the function name (endpoint), which is 'driver_bp.register_driver',
+        as corrected to fix the BuildError.
+    -->
+    <form method="POST" action="{{ url_for('driver_bp.register_driver') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- Flashed Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <!-- Using your structure for flash messages -->
+            <div class="flash-messages {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- ============================================= -->
+      <!-- ACCOUNT CREDENTIALS (Full-width rows) -->
+      <!-- ============================================= -->
+      <h2 style="margin-top: 1rem;">Account Credentials</h2>
+
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input id="username" type="text" name="username" required>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input id="email" type="email" name="email" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input id="phone" type="tel" name="phone" placeholder="(555) 555-5555" required>
+      </div>
+      
+      <!-- ============================================= -->
+      <!-- PERSONAL & DRIVER DETAILS (2-Column Grid) -->
+      <!-- ============================================= -->
+      <h2 style="margin-top: 2rem;">Personal & Driver Details</h2>
+
+      <!-- Grid for First Name and Last Name -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label for="fname">First Name</label>
+          <input id="fname" type="text" name="fname" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="lname">Last Name</label>
+          <input id="lname" type="text" name="lname" required>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="license_number">Driver License Number</label>
+        <input id="license_number" type="text" name="license_number" required>
+      </div>
+
+      <!-- ============================================= -->
+      <!-- ADDRESS FIELDS (1-Column Street, 3-Column Others) -->
+      <!-- ============================================= -->
+      <h2 style="margin-top: 2rem;">Primary Address</h2>
+
+      <div class="form-group">
+        <label for="street">Street Address</label>
+        <input id="street" type="text" name="street" required>
+      </div>
+
+      <!-- Grid for City, State, and Zip -->
+      <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label for="city">City</label>
+          <input id="city" type="text" name="city" required>
+        </div>
+
+        <div class="form-group">
+          <label for="state">State</label>
+          <input id="state" type="text" name="state" required>
+        </div>
+
+        <div class="form-group">
+          <label for="zip_code">Zip Code</label>
+          <input id="zip_code" type="text" name="zip_code" required>
+        </div>
+      </div>
+
+
+      <div class="form-actions" style="margin-top: 2rem;">
+        <button type="submit" class="btn btn-primary">Register Account</button>
+      </div>
+    </form>
+    
+    <div class="form-actions" style="margin-top: 1rem;">
+      <!-- Link back to the existing login route -->
+      <a href="{{ url_for('driver_bp.login') }}" class="btn btn-outline">Already have an account? Log In</a>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

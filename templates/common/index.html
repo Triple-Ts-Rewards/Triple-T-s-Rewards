@@ -3,15 +3,21 @@
 {% block title %}Home - TRIPLE T's Trucking Rewards{% endblock %}
 
 {% block content %}
-<div class="centered-content">
-    <h1>TRIPLE T's TRUCKING REWARDS</h1>
-    <h3>Welcome to TRIPLE T's TRUCKING REWARDS!</h3>
+<div class="homepage">
+  <h1>Welcome to <span class="accent-text">TRIPLE T's Trucking Rewards</span></h1>
+  <p class="tagline">Recognizing hard work. Rewarding excellence.</p>
 
-    <h3>Login below to your account to start your reward's journey!</h3>
-    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
- 
+  <p class="lead">Log in to access your account and start earning your rewards today.</p>
+  <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
 
-    <h3>New here? View our about page for more information about our services.</h3>
-    <a href="{{ url_for('about_bp.view_about') }}" class="btn btn-primary">Read Our About Page</a>
+    <p class="text-sm text-gray-400">
+      Don't have an account yet? 
+      <a href="{{ url_for('auth.signup_page')}}" id="signup-link" class="text-green-400 hover:text-green-300 font-semibold transition duration-200">Sign up</a>
+    </p>
+
+  <hr class="divider">
+
+  <p class="lead">New to Triple T’s? Learn more about how we reward our drivers and partners.</p>
+  <a href="{{ url_for('about_bp.view_about') }}" class="btn btn-outline">Read Our About Page</a>
 </div>
 {% endblock %}

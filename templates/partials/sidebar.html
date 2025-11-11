@@ -1,5 +1,7 @@
-<aside class="app-sidebar">
-    <ul class="sidebar-list">
+
+<!-- Sidebar -->
+<aside class="app-sidebar" id="sidebar">
+  <ul class="sidebar-list">
         
         {# --- UNIVERSAL LINKS / NON-COLLAPSIBLE ITEMS --- #}
         
@@ -29,49 +31,27 @@
         </li>
 
 
-        {# --- DASHBOARDS EXPANDABLE SECTION --- #}
-        
-        {# Determine if any dashboard link is currently active to auto-expand the menu #}
-        {% set dashboard_endpoints = [
-            'administrator_bp.dashboard', 
-            'sponsor_bp.dashboard', 
-            'driver_bp.dashboard'
-        ] %}
-        {% set is_dashboard_active = request.endpoint in dashboard_endpoints %}
-
-        <li class="has-submenu">
-            {# The main link/button that triggers the expansion #}
-            <a href="#" class="sidebar-link submenu-toggle {% if is_dashboard_active %}expanded{% endif %}" data-target="dashboard-menu">
-                Dashboards
-                <span class="icon">▼</span> 
-            </a>
-        
-            {# The collapsible content container #}
-            {# Use is_dashboard_active to start the menu expanded if a sub-link is active #}
-            <ul id="dashboard-menu" class="submenu {% if not is_dashboard_active %}collapsed{% endif %}">
-                
-                {# Admin Dashboard Link: Only visible to 'administrator' #}
-                {% if current_user.is_authenticated and current_user.USER_TYPE == 'administrator' %}
-                        <a href="{{ url_for('administrator_bp.dashboard') }}" class="sidebar-link sub-link {{ 'active' if request.endpoint == 'administrator_bp.dashboard' else '' }}">
-                            Admin Dashboard
-                        </a>
-                {% endif %}
-
-                {# Sponsor Dashboard Link: Visible to 'administrator' and 'sponsor' #}
-                {% if current_user.is_authenticated and current_user.USER_TYPE in ['administrator', 'sponsor'] %}
-                        <a href="{{ url_for('sponsor_bp.dashboard') }}" class="sidebar-link sub-link {{ 'active' if request.endpoint == 'sponsor_bp.dashboard' else '' }}">
-                            Sponsor Dashboard
-                        </a>
-                {% endif %}
-
-                {# Driver Dashboard Link: Visible to all three roles #}
-                {% if current_user.is_authenticated and current_user.USER_TYPE in ['administrator', 'sponsor', 'driver'] %}
-                        <a href="{{ url_for('driver_bp.dashboard') }}" class="sidebar-link sub-link {{ 'active' if request.endpoint == 'driver_bp.dashboard' else '' }}">
-                            Driver Dashboard
-                        </a>
-                {% endif %}
-            </ul>
-        </li>
+        {% if current_user.is_authenticated %}
+            {% if current_user.USER_TYPE == 'administrator' %}
+                <li>
+                    <a href="{{ url_for('administrator_bp.dashboard') }}" class="sidebar-link {{ 'active' if request.endpoint == 'administrator_bp.dashboard' else '' }}">
+                        Admin Dashboard
+                    </a>
+                </li>
+            {% elif current_user.USER_TYPE == 'sponsor' %}
+                <li>
+                    <a href="{{ url_for('sponsor_bp.dashboard') }}" class="sidebar-link {{ 'active' if request.endpoint == 'sponsor_bp.dashboard' else '' }}">
+                        Sponsor Dashboard
+                    </a>
+                </li>
+            {% elif current_user.USER_TYPE == 'driver' %}
+                <li>
+                    <a href="{{ url_for('driver_bp.dashboard') }}" class="sidebar-link {{ 'active' if request.endpoint == 'driver_bp.dashboard' else '' }}">
+                        Driver Dashboard
+                    </a>
+                </li>
+            {% endif %}
+        {% endif %}
 
         {# --- REMAINDER OF ROLE-SPECIFIC LINKS (AFTER DASHBOARDS) --- #}
 
@@ -119,5 +99,39 @@
                 </a>
             </li>
         {% endif %}
-    </ul>
+  </ul>
 </aside>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const toggle = document.querySelector(".sidebar-toggle");
+
+  if (!toggle) return;
+
+  // Create overlay if not already present
+  let overlay = document.querySelector(".sidebar-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.className = "sidebar-overlay";
+    document.body.appendChild(overlay);
+  }
+
+  // Toggle sidebar open/close when clicking hamburger
+  toggle.addEventListener("click", function(e) {
+    e.stopPropagation();
+    document.body.classList.toggle("is-sidebar-open");
+  });
+
+  // Close when clicking overlay
+  overlay.addEventListener("click", function() {
+    document.body.classList.remove("is-sidebar-open");
+  });
+
+  // Close on ESC key
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+      document.body.classList.remove("is-sidebar-open");
+    }
+  });
+});
+</script>

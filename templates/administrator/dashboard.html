@@ -3,15 +3,6 @@
   <div class="app-header-row">
     <h1 style="margin:0;">Administrator Dashboard</h1>
   </div>
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <ul class="flashes">
-        {% for category, message in messages %}
-          <li class="{{ category }}">{{ message }}</li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-  {% endwith %}
   <p><a href="{{ url_for('administrator_bp.accounts') }}" class="btn btn-dash">Manage Active Users</a></p>
   <p><a href="{{ url_for('administrator_bp.disabled_accounts') }}" class="btn btn-dash">Manage Inactive Users</a></p>
   <p><a href="{{ url_for('administrator_bp.add_user') }}" class="btn btn-dash">Add a New User</a></p>

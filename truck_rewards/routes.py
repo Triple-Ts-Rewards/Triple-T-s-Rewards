@@ -55,7 +55,7 @@ def store():
 @rewards_bp.route("/products/<int:sponsor_id>")
 @login_required
 def products(sponsor_id):
-    settings = StoreSettings.query.filter_by(sponsor_id=sponsor_id).first()
+    settings = StoreSettings.query.filter_by(ORG_ID=sponsor_id).first()
     if not settings:
         return jsonify({"error": "Store settings not found for this sponsor."}), 404
         
@@ -127,7 +127,7 @@ def add_to_cart():
     
     existing_item = CartItem.query.filter_by(
         user_id=current_user.USER_CODE, 
-        sponsor_id=sponsor_id, 
+        ORG_ID=sponsor_id, 
         item_id=item_id
     ).first()
 
@@ -136,7 +136,7 @@ def add_to_cart():
     else:
         new_item = CartItem(
             user_id=current_user.USER_CODE,
-            sponsor_id=sponsor_id,
+            ORG_ID=sponsor_id,
             item_id=item_id,
             title=title,
             price=price,
@@ -154,7 +154,7 @@ def view_cart(sponsor_id):
     """Displays the user's shopping cart."""
     cart_items = CartItem.query.filter_by(
         user_id=current_user.USER_CODE,
-        sponsor_id=sponsor_id
+        ORG_ID=sponsor_id
     ).all()
 
     total_points = sum(item.points * item.quantity for item in cart_items)
@@ -162,7 +162,7 @@ def view_cart(sponsor_id):
 
     association = DriverSponsorAssociation.query.filter_by(
         driver_id=current_user.USER_CODE,
-        sponsor_id=sponsor_id
+        ORG_ID=sponsor_id
     ).first()
 
     user_points = association.points if association else 0
@@ -194,7 +194,7 @@ def remove_from_cart(item_id, sponsor_id):
 @login_required
 def clear_cart(sponsor_id):
     """Clears all items from the user's cart."""
-    CartItem.query.filter_by(user_id=current_user.USER_CODE, sponsor_id=sponsor_id).delete()
+    CartItem.query.filter_by(user_id=current_user.USER_CODE, ORG_ID=sponsor_id).delete()
     db.session.commit()
     flash("Your cart has been cleared.", "info")
     return redirect(url_for('rewards_bp.view_cart', sponsor_id=sponsor_id))
@@ -259,12 +259,12 @@ def checkout():
         flash("Sponsor ID is missing. Cannot complete purchase.", "danger")
         return redirect(url_for('driver_bp.dashboard'))
 
-    cart_items = CartItem.query.filter_by(user_id=current_user.USER_CODE).all()
+    cart_items = CartItem.query.filter_by(user_id=current_user.USER_CODE, ORG_ID=sponsor_id).all()
     total_points = sum(item.points * item.quantity for item in cart_items)
 
     association = DriverSponsorAssociation.query.filter_by(
         driver_id=current_user.USER_CODE,
-        sponsor_id=sponsor_id
+        ORG_ID=sponsor_id
     ).first()
 
     if not association or association.points < total_points:

@@ -1,3 +1,4 @@
+from urllib.parse import urlencode
 from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
 from flask_login import login_user, logout_user, login_required, current_user
 from common.decorators import role_required
@@ -8,7 +9,6 @@ from common.logging import (LOGIN_EVENT,
     SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT,
     DRIVER_POINTS)
 from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event)
-from datetime import datetime
 from datetime import datetime, timedelta
 from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization
 import csv
@@ -143,47 +143,74 @@ def dashboard():
 @administrator_bp.get('/audit_logs/view')
 @role_required(Role.ADMINISTRATOR, allow_admin=False)
 def view_audit_logs():
+    # category key from menu: "login", "driver_points", etc.
     category_key = (request.args.get("event_type") or "").strip()
 
     if category_key not in AUDIT_CATEGORIES:
         flash("Unknown audit log type.", "warning")
         return redirect(url_for("administrator_bp.audit_menu"))
 
-    start_str = request.args.get("start")
-    end_str   = request.args.get("end")
-
+    # ---- parse filters ----
     def parse_date(s):
         if not s:
             return None
-        for fmt in ("%m/%d/%Y", "%Y-%m-%d"):
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y"):
             try:
                 return datetime.strptime(s, fmt)
             except ValueError:
                 pass
         return None
 
+    start_str = request.args.get("start")
+    end_str   = request.args.get("end")
+    username  = (request.args.get("username") or "").strip()
+    contains  = (request.args.get("q") or "").strip()
+
     start_dt = parse_date(start_str)
     end_dt   = parse_date(end_str)
 
-    # Base query by category
-    if category_key == "bulk_load":
-        # Capture all known variants + any future "*bulk_load*"
-        q = AuditLog.query.filter(
-            or_(
-                AuditLog.EVENT_TYPE.in_(list(AUDIT_CATEGORIES["bulk_load"])),
-                AuditLog.EVENT_TYPE.ilike("bulk_load%"),
-                AuditLog.EVENT_TYPE.ilike("%_bulk_load%"),
-            )
-        )
-    else:
-        q = AuditLog.query.filter(AuditLog.EVENT_TYPE.in_(list(AUDIT_CATEGORIES[category_key])))
+    # ---- ALWAYS initialize q first ----
+    q = AuditLog.query
 
+    # limit to the event types in this category
+    event_types = list(AUDIT_CATEGORIES[category_key])
+    q = q.filter(AuditLog.EVENT_TYPE.in_(event_types))
+
+    # apply optional date filters
     if start_dt:
         q = q.filter(AuditLog.CREATED_AT >= start_dt)
     if end_dt:
+        # include entire end day
         q = q.filter(AuditLog.CREATED_AT < end_dt + timedelta(days=1))
 
-    logs = q.order_by(AuditLog.CREATED_AT.desc()).limit(500).all()
+    # optional username / contains (DETAILS) filters, if you store such info in DETAILS
+    if username:
+        # naive contains match; adapt to your schema as needed
+        q = q.filter(AuditLog.DETAILS.ilike(f"%{username}%"))
+    if contains:
+        q = q.filter(AuditLog.DETAILS.ilike(f"%{contains}%"))
+
+    # ---- pagination ----
+    try:
+        page = int(request.args.get("page", 1))
+    except ValueError:
+        page = 1
+    try:
+        per_page = int(request.args.get("per_page", 25))
+    except ValueError:
+        per_page = 25
+    per_page = max(1, min(per_page, 200))  # sane bounds
+
+    q = q.order_by(AuditLog.CREATED_AT.desc())
+    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+    logs = pagination.items
+
+    # ---- build pagination helper params for template ----
+    # base_url is the path; url_params_qs is the preserved query without page/per_page
+    base_url = url_for('administrator_bp.view_audit_logs')
+    url_params = request.args.to_dict()
+    url_params.pop("page", None)
+    url_params_qs = "&".join(f"{k}={v}" for k, v in url_params.items() if v)
 
     titles = {
         "login": "Login Activity",
@@ -196,11 +223,19 @@ def view_audit_logs():
 
     return render_template(
         "administrator/audit_list.html",
-        logs=logs,                       # <— make sure your template iterates 'logs'
+        # data
+        logs=logs,
         title=titles.get(category_key, "Audit Logs"),
         event_type=category_key,
-        start=start_str,
-        end=end_str,
+
+        # filters back into the template (so inputs keep their values)
+        start=start_str, end=end_str, username=username, q=contains,
+
+        # pagination context
+        pagination=pagination,
+        per_page=per_page,
+        base_url=base_url,
+        url_params_qs=url_params_qs,
     )
 # Logout
 @administrator_bp.route('/logout')

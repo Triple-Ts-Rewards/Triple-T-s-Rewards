@@ -5,15 +5,6 @@
 {% block content %}
 <main class="app-main-content container">
   <h1>My Settings</h1>
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="flash-messages {{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
   <form method="POST" action="{{ url_for('driver_bp.settings') }}" class="form-styled">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -53,4 +44,8 @@
     </div>
   </form>
 </main>
+
+<p style="margin-top: 1.5rem; text-align: center;">
+  <a class="btn btn-outline" href="{{ url_for('driver_bp.dashboard') }}">← Back to Driver Dashboard</a>
+</p>
 {% endblock %}

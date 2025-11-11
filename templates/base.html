@@ -17,10 +17,11 @@
   
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  {{ moment.include_moment() }}
   {% block styles %}{% endblock %}
 </head>
 
-<body>
+<body class="{% if current_user.is_authenticated %}has-sidebar{% endif %}">
 
     {# include universal navbar #}
   {% include "partials/navbar.html" %}
@@ -126,5 +127,30 @@
     </script>
     <script src="{{ url_for('static', filename='js/navbar.js') }}"></script>
   {% endblock %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const toggle = document.querySelector(".sidebar-toggle");
+  const overlay = document.createElement("div");
+  overlay.className = "sidebar-overlay";
+  document.body.appendChild(overlay);
+
+  if (toggle) {
+    toggle.addEventListener("click", function() {
+      document.body.classList.toggle("is-sidebar-open");
+    });
+  }
+
+  overlay.addEventListener("click", function() {
+    document.body.classList.remove("is-sidebar-open");
+  });
+
+  // Close sidebar on ESC key
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+      document.body.classList.remove("is-sidebar-open");
+    }
+  });
+});
+</script>
 </body>
 </html>

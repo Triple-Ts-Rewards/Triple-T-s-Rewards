@@ -5,8 +5,7 @@ from urllib.parse import urlparse, urljoin
 from flask_login import login_user, logout_user, login_required, current_user
 import pyotp
 import qrcode
-import auth
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 from common.second_factor import create_email_code, verify_email_code, send_email
 from models import User, Role, Notification  # Role has DRIVER, SPONSOR, ADMINISTRATOR
 from datetime import datetime, timedelta
@@ -14,7 +13,9 @@ from extensions import db
 from sqlalchemy import or_
 from common.emailer import send_email
 from common.logging import log_audit_event, LOGIN_EVENT
+from common.decorators import unauthenticated_only
 from . import auth_bp
+
 
 auth_bp = Blueprint("auth", __name__, template_folder="../templates")
 
@@ -22,7 +23,26 @@ auth_bp = Blueprint("auth", __name__, template_folder="../templates")
 LOCKOUT_ATTEMPTS = 3
 RESET_TOKEN_TTL_MINUTES = 30
 
+def issue_reset_link(user: User):
+    token = user.generate_reset_token()
+    db.session.commit()
 
+    # If you email the link (prod):
+    reset_url = url_for("auth.reset_token", token=token, _external=True)
+    try:
+        send_email(
+            to=user.EMAIL,
+            subject="Password reset",
+            body=f"Click to reset your password:\n{reset_url}\nThis link may expire."
+        )
+        flash("If an account exists, we emailed a reset link.", "info")
+        session.pop("pw_reset_user_id", None)
+        return redirect(url_for("auth.login"))
+    except Exception:
+        # Dev fallback: just redirect straight to the token page
+        session.pop("pw_reset_user_id", None)
+        flash("Reset link generated.", "info")
+        return redirect(url_for("auth.reset_token", token=token))
 
 @auth_bp.route('/settings')
 @login_required
@@ -337,26 +357,73 @@ def logout():
     flash("You have been logged out.", "info")
     return redirect(url_for("auth.login"))
 
+@auth_bp.get("/reset/2fa/totp")
+def reset_totp_prompt():
+    uid = session.get("pw_reset_user_id")
+    if not uid:
+        flash("Session expired. Please try again.", "warning")
+        return redirect(url_for("auth.login"))
+    return render_template("auth/reset_totp_prompt.html")
+
+@auth_bp.post("/reset/2fa/totp")
+def reset_totp_verify():
+    uid = session.get("pw_reset_user_id")
+    if not uid:
+        flash("Session expired. Please try again.", "warning")
+        return redirect(url_for("auth.login"))
+
+    user = db.session.get(User, uid)
+    token = (request.form.get("token") or "").strip()
+
+    if not (user and user.TOTP_SECRET):
+        flash("2FA not enabled for this account.", "danger")
+        return redirect(url_for("auth.login"))
+
+    totp = pyotp.TOTP(user.TOTP_SECRET)
+    if totp.verify(token, valid_window=1):
+        return issue_reset_link(user)
+
+    flash("Invalid or expired code.", "danger")
+    return render_template("auth/reset_totp_prompt.html"), 400
 
 
 
 @auth_bp.route("/reset_password", methods=["GET", "POST"])
 def reset_password():
-    if request.method == "POST":
-        identifier = request.form.get("username", "").strip()
-        user = User.query.filter_by(USERNAME=identifier).first()
-        if not user:
-            flash("Username not found.", "danger")
-            return render_template("common/reset_password.html")
-        
-        token = user.generate_reset_token()
-        db.session.commit()
-        
-        reset_url = url_for("auth.reset_token", token=token, _external=True)
-        flash(f"Password reset link (valid for {RESET_TOKEN_TTL_MINUTES} minutes): {reset_url}", "info")
-        log_audit_event("RESET REQUEST", f"Password reset requested for user {user.USERNAME}.")
-        return redirect(url_for("auth.reset_password"))
-    return render_template("common/reset_password.html")
+    if request.method == "GET":
+        return render_template("common/reset_password.html")
+
+    # POST
+    identifier = (request.form.get("username") or request.form.get("email") or "").strip()
+
+    # Do not leak if user exists or not
+    user = None
+    if identifier:
+        user = (User.query
+                .filter( (User.USERNAME == identifier) | (User.EMAIL == identifier) )
+                .first())
+
+    if not user:
+        # Same response either way
+        flash("If an account exists, we emailed a reset link.", "info")
+        return redirect(url_for("auth.login"))
+
+    # Gate with 2FA when enabled
+    needs_totp  = bool(user.TOTP_SECRET)
+    needs_email = bool(user.EMAIL_2FA_ENABLED)
+
+    if needs_totp or needs_email:
+        session["pw_reset_user_id"] = user.USER_CODE
+        if needs_totp:
+            return redirect(url_for("auth.reset_totp_prompt"))
+        else:
+            # send email 2FA code specifically for 'reset'
+            create_email_code(user, "reset", minutes=10)
+            return redirect(url_for("auth.reset_email_prompt"))
+
+    # No 2FA → issue link immediately
+    return issue_reset_link(user)
+
 
 def reset_request():
     if request.method == "POST":
@@ -371,8 +438,7 @@ def reset_request():
         reset_url = url_for("auth.reset_token", token=token, _external=True)
         flash(f"Password reset link (valid for {RESET_TOKEN_TTL_MINUTES} minutes): {reset_url}", "info")
         return redirect(url_for("auth.reset_password"))
-    
-    
+
 @auth_bp.route("/reset/<token>", methods=["GET", "POST"])
 def reset_token(token: str):
     user = User.query.filter_by(RESET_TOKEN=token).first()
@@ -396,6 +462,10 @@ def reset_token(token: str):
             flash("Passwords do not match or are empty.", "danger")
             return render_template("common/reset_with_token.html", token=token)
         
+        if user.PASS and user.check_password(new_password.strip()):
+            flash("New password cannot be the same as the old password.", "danger")
+            return render_template("common/reset_with_token.html", token=token)
+        
         user.set_password(new_password)
         user.clear_reset_token()
         user.clear_failed_attempts()  # also clear failed attempts on password reset
@@ -406,3 +476,8 @@ def reset_token(token: str):
         return redirect(url_for("auth.login"))
     
     return render_template("common/reset_with_token.html", token=token)
+
+@auth_bp.route('/signup', methods=['GET'])
+@unauthenticated_only(redirect_to='driver_bp.dashboard') 
+def signup_page():
+    return render_template('common/driver_signup.html')

@@ -17,3 +17,5 @@ pillow
 qrcode
 pyotp==2.8.0
 Flask-Mail==0.9.1
+WTForms==3.0.1
+Flask-Moment==1.0.5

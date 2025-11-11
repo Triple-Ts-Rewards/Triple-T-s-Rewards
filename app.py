@@ -9,7 +9,7 @@ from config import Config
 from models import User
 from flask_wtf import CSRFProtect
 from forms import AboutForm
-from extensions import bcrypt, migrate, login_manager, csrf, bcrypt, db, mail
+from extensions import bcrypt, migrate, login_manager, csrf, bcrypt, db, mail, moment
 from auth.routes import auth_bp
 
 # Initialize scheduler
@@ -23,6 +23,7 @@ def create_app():
     # Initialize Flask app
     app = Flask(__name__)
     mail.init_app(app)
+    moment.init_app(app)
     app.config.from_object("config.Config")
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-me")
     app.config["WTF_CSRF_TIME_LIMIT"] = None  # optional
