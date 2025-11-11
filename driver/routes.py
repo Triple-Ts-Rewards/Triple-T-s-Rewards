@@ -57,7 +57,7 @@ def login():
                     # Log the error but don't fail the login process
                     log_audit_event("SECURITY_NOTIFICATION_FAILED", f"Failed to send security notification to user {user.USERNAME}: {str(e)}")
             
-            return render_template('driver/login.html')
+            return render_template('common/login.html')
         
         # On successful login
         user.clear_failed_attempts()
@@ -68,7 +68,7 @@ def login():
         return redirect(url_for('driver_bp.dashboard'))
 
     # Looks inside templates/driver/login.html
-    return render_template('driver/login.html')
+    return render_template('common/login.html')
 
 # Dashboard
 @driver_bp.route('/dashboard')
@@ -366,3 +366,77 @@ def redirect_to_cart():
         # If no organizations are found, send them to the application page with a helpful message.
         flash("You must join a sponsor's organization to have a cart.", "info")
         return redirect(url_for('driver_bp.apply_driver'))
+
+ 
+@driver_bp.route('/register', methods=['POST'])
+def register_driver():
+    form_data = request.form
+    
+    # Check for existing Username/Email
+    if User.query.filter_by(USERNAME=form_data['username']).first():
+        flash('Username is already taken.', 'danger')
+        return redirect(url_for('auth_bp.signup_page')) # assuming auth_bp handles the GET route
+    if User.query.filter_by(EMAIL=form_data['email']).first():
+        flash('Email address is already in use.', 'danger')
+        return redirect(url_for('auth_bp.signup_page'))
+
+    try:
+        # Hash Password
+        hashed_password = bcrypt.generate_password_hash(form_data['password']).decode('utf-8')
+
+        # Create User Record
+        new_user = User(
+            USERNAME=request.form.get('username'),
+            PASS=hashed_password,
+            USER_TYPE=Role.DRIVER, # Explicitly set as 'DRIVER'
+            EMAIL=request.form.get('email'),
+            FNAME=request.form.get('fname'),
+            LNAME=request.form.get('lname'),
+            PHONE=request.form.get('phone'),
+            IS_ACTIVE=True, 
+            IS_LOCKED_OUT=False,
+            wants_point_notifications=True,
+            wants_order_notifications=True,
+            wants_security_notifications=True,
+            CREATED_AT=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        )
+        db.session.add(new_user)
+        
+        # Flush the session to get the auto-generated USER_CODE
+        # This executes the INSERT for User, giving us the ID, but doesn't commit the transaction.
+        db.session.flush()
+        user_code = new_user.USER_CODE 
+        
+        # Create Driver Subtype Record (DRIVERS table)
+        new_driver = Driver(DRIVER_ID=new_user.USER_CODE, LICENSE_NUMBER=request.form.get('license_number'))
+
+        db.session.add(new_driver)
+        
+        # Create Address Record (ADDRESSES table)
+        new_address = Address(
+            user_id=user_code,
+            street=form_data['street'],
+            city=form_data['city'],
+            state=form_data['state'],
+            zip_code=form_data['zip_code'],
+            is_default=True
+        )
+        db.session.add(new_address)
+
+        # Commit all records in one transaction
+        db.session.commit()
+        
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+        log_audit_event("DRIVER_REGISTER", f"Driver account created: user={form_data['username']} code={user_code} ip={ip}")
+
+        flash('Driver account created successfully! Please log in.', 'success')
+        return redirect(url_for('auth.login'))# Redirect to the driver login page
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error during driver registration: {e}")
+        # Log the full exception for debugging
+        log_audit_event("DRIVER_REG_ERROR", f"Error creating account for {form_data['username']}: {str(e)}")
+        flash('An error occurred during registration. Please try again.', 'danger')
+        # Redirect back to the form
+        return redirect(url_for('auth.signup_page'))

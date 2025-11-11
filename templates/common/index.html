@@ -10,6 +10,11 @@
   <p class="lead">Log in to access your account and start earning your rewards today.</p>
   <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
 
+    <p class="text-sm text-gray-400">
+      Don't have an account yet? 
+      <a href="{{ url_for('auth.signup_page')}}" id="signup-link" class="text-green-400 hover:text-green-300 font-semibold transition duration-200">Sign up</a>
+    </p>
+
   <hr class="divider">
 
   <p class="lead">New to Triple T’s? Learn more about how we reward our drivers and partners.</p>

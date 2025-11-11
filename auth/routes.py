@@ -473,3 +473,7 @@ def reset_token(token: str):
         return redirect(url_for("auth.login"))
     
     return render_template("common/reset_with_token.html", token=token)
+
+@auth_bp.route('/signup', methods=['GET'])
+def signup_page():
+    return render_template('common/driver_signup.html')
