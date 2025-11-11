@@ -1,7 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
   <main class="app-main-content container">
-    <h1>Sponsor Dashboard</h1>
+    {% if organization %}
+    <h3 class="text-muted mb-4">
+        <i class="fa-solid fa-building"></i> 
+        {{ organization.ORG_NAME }}
+    </h3>
+{% else %}
+    <h3 class="text-muted mb-4">No organization assigned</h3>
+{% endif %}
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}

@@ -59,9 +59,41 @@
         <thead class="thead-dark">
             <tr>
                 <th>Driver Name</th>
-                <th>Username</th>
+                <th style="cursor:pointer;">
+                  <a 
+                    href="{{ url_for('sponsor_bp.manage_points_page',
+                                      search=request.args.get('search', ''),
+                                      status=request.args.get('status', ''),
+                                      sort='username_desc' if request.args.get('sort') != 'username_desc' else 'username_asc') }}"
+                    style="color:#86C232; text-decoration:none; font-weight:600;">
+                    Username
+                    {% if request.args.get('sort') == 'username_desc' %}
+                      ▲
+                    {% elif request.args.get('sort') == 'username_asc' %}
+                      ▼
+                    {% else %}
+                      <i class="fa-solid fa-sort" style="color:#ccc; margin-left:4px;"></i>
+                    {% endif %}
+                  </a>
+                </th>
                 <th>Email</th>
-                <th>Current Points</th>
+                <th style="cursor:pointer;">
+                  <a 
+                    href="{{ url_for('sponsor_bp.manage_points_page',
+                                      search=request.args.get('search', ''),
+                                      status=request.args.get('status', ''),
+                                      sort='points_desc' if request.args.get('sort') != 'points_desc' else 'points_asc') }}"
+                    style="color:#86C232; text-decoration:none; font-weight:600;">
+                    Current Points
+                    {% if request.args.get('sort') == 'points_desc' %}
+                      ▲
+                    {% elif request.args.get('sort') == 'points_asc' %}
+                      ▼
+                    {% else %}
+                      <i class="fa-solid fa-sort" style="color:#ccc; margin-left:4px;"></i>
+                    {% endif %}
+                  </a>
+                </th>
                 <th>Action</th>
             </tr>
         </thead>
@@ -71,10 +103,15 @@
                 <td>{{ driver.user.FNAME }} {{ driver.user.LNAME }}</td>
                 <td>{{ driver.user.USERNAME }}</td>
                 <td>{{ driver.user.EMAIL }}</td>
-                <td><span class="badge bg-primary">{{ driver.points }}</span></td>
+                <td><span class="badge bg-primary current-points-badge" data-current-points="{{ driver.points }}">{{ driver.points }}</span></td>
                 <td>
-                  <form action="{{ url_for('sponsor_bp.manage_points', driver_id=driver.user.USER_CODE) }}" method="post" class="form-inline">
+                  <form action="{{ url_for('sponsor_bp.manage_points', driver_id=driver.user.USER_CODE) }}" method="post" class="form-inline point-update-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <input type="hidden" name="search_query" value="{{ search_query or '' }}">
+                        <input type="hidden" name="status_filter" value="{{ status_filter or '' }}">
+                        <input type="hidden" name="current_sort" value="{{ current_sort or 'username_asc' }}">
+
                         <div class="form-group mb-2 mr-sm-2">
                             <input type="number" name="points" class="form-control" placeholder="Points" required min="1">
                         </div>
@@ -98,4 +135,74 @@
     <p>There are no drivers currently associated with your organization.</p>
     {% endif %}
 </div>
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Find all point update forms
+    const forms = document.querySelectorAll('.point-update-form');
+
+    forms.forEach(form => {
+        const pointsInput = form.querySelector('input[name="points"]');
+        const actionSelect = form.querySelector('select[name="action"]');
+        // Find the badge associated with this form's row by traversing up to the <tr>
+        const pointsBadge = form.closest('tr').querySelector('.current-points-badge');
+        
+        if (!pointsInput || !actionSelect || !pointsBadge) {
+            console.warn("Could not find all elements for point preview in a form.");
+            return; // Skip if form is incomplete
+        }
+
+        // Get the original points value stored in the data attribute
+        const originalPoints = parseInt(pointsBadge.dataset.currentPoints, 10);
+
+        function updatePointsPreview() {
+            const pointsToChange = parseInt(pointsInput.value, 10);
+            const action = actionSelect.value;
+
+            if (isNaN(pointsToChange) || pointsToChange <= 0) {
+                // Reset to original if input is invalid or empty
+                pointsBadge.textContent = originalPoints;
+                pointsBadge.classList.remove('badge-preview-award', 'badge-preview-remove');
+                pointsBadge.classList.add('bg-primary'); // Ensure it's back to the default color
+                return;
+            }
+
+            let newTotal;
+            if (action === 'award') {
+                newTotal = originalPoints + pointsToChange;
+                // Apply preview styles
+                pointsBadge.classList.remove('bg-primary', 'badge-preview-remove');
+                pointsBadge.classList.add('badge-preview-award');
+            } else { // action === 'remove'
+                newTotal = originalPoints - pointsToChange;
+                // Apply preview styles
+                pointsBadge.classList.remove('bg-primary', 'badge-preview-award');
+                pointsBadge.classList.add('badge-preview-remove');
+            }
+
+            // Update the text to show the change
+            pointsBadge.textContent = `${originalPoints} → ${newTotal}`;
+        }
+
+        // Add event listeners to update the preview on input or selection change
+        pointsInput.addEventListener('input', updatePointsPreview);
+        actionSelect.addEventListener('change', updatePointsPreview);
+    });
+});
+</script>
+
+<style>
+    .badge-preview-award {
+        background-color: #28a745 !important; /* Green */
+        color: white;
+        font-weight: bold;
+    }
+    .badge-preview-remove {
+        background-color: #dc3545 !important; /* Red */
+        color: white;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
 {% endblock %}
