@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Verify your identity</h2>
+  <p>Enter the 6-digit code from your authenticator app to continue.</p>
+  <form method="post" action="{{ url_for('auth.reset_totp_verify') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="token" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+    <button class="btn" type="submit">Verify</button>
+    </form>
+{% endblock %}

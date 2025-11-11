@@ -15,26 +15,6 @@
         </a>
         <h1 style="margin:0;">Add New Driver</h1>
       </div>
-
-      {# Flash messages (optional, if you flash on errors/success) #}
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="flash-messages">
-            {% for category, message in messages %}
-              {% if category == 'success' %}
-                <div class="alert success" role="alert">{{ message }}</div>
-              {% elif category == 'danger' %}
-                <div class="alert error" role="alert">{{ message }}</div>
-              {% elif category == 'warning' %}
-                <div class="alert warning" role="alert">{{ message }}</div>
-              {% else %}
-                <div class="alert" role="status">{{ message }}</div>
-              {% endif %}
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
-
       <form method="POST" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
