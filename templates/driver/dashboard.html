@@ -41,11 +41,12 @@
     {# The "Quick Actions" are now styled as large buttons, like the sponsor dashboard #}
     <div class="dashboard-links">
         <h3>Quick Actions</h3>
-        <p><a href="{{ url_for('driver_bp.point_history') }}" class="btn btn-dash">View Point History</a></p>
-        <p><a href="{{ url_for('driver_bp.addresses') }}" class="btn btn-dash">Manage Shipping Addresses</a></p>
-        <p><a href="{{ url_for('driver_bp.apply_driver') }}" class="btn btn-dash">Apply to a New Sponsor</a></p>
-         <p><a href="{{ url_for('driver_bp.update_contact') }}" class="btn btn-dash">Edit Account Information</a></p>
-        <p><a href="{{ url_for('auth.settings') }}" class="btn btn-dash">My Settings</a></p>
+        <p><a href="{{ url_for('driver_bp.point_history') }}" class="btn btn-primary">View Point History</a></p>
+        <p><a href="{{ url_for('driver_bp.addresses') }}" class="btn btn-primary">Manage Shipping Addresses</a></p>
+        <p><a href="{{ url_for('driver_bp.sponsor_info_select') }}" class="btn btn-primary">Sponsor Information</a></p>
+        <p><a href="{{ url_for('driver_bp.apply_driver') }}" class="btn btn-primary">Apply to a New Sponsor</a></p>
+         <p><a href="{{ url_for('driver_bp.update_contact') }}" class="btn btn-primary">Edit Account Information</a></p>
+        <p><a href="{{ url_for('auth.settings') }}" class="btn btn-primary">My Settings</a></p>
     </div>
 
 </div>

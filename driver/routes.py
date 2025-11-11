@@ -367,6 +367,46 @@ def redirect_to_cart():
         flash("You must join a sponsor's organization to have a cart.", "info")
         return redirect(url_for('driver_bp.apply_driver'))
 
+# Sponsor Information Routes
+@driver_bp.route('/sponsor_info')
+@role_required(Role.DRIVER)
+def sponsor_info_select():
+    """Display page for driver to select which organization's sponsors to view"""
+    # Get all organizations the driver is associated with
+    associations = DriverSponsorAssociation.query.filter_by(driver_id=current_user.USER_CODE).all()
+    
+    if not associations:
+        flash("You are not currently associated with any organizations.", "info")
+        return redirect(url_for('driver_bp.dashboard'))
+    
+    return render_template('driver/sponsor_info_select.html', associations=associations)
+
+@driver_bp.route('/sponsor_info/<int:org_id>')
+@role_required(Role.DRIVER)
+def sponsor_info_details(org_id):
+    """Display sponsor contact information for a specific organization"""
+    # Verify the driver is associated with this organization
+    association = DriverSponsorAssociation.query.filter_by(
+        driver_id=current_user.USER_CODE, 
+        ORG_ID=org_id
+    ).first()
+    
+    if not association:
+        flash("You do not have access to this organization's information.", "danger")
+        return redirect(url_for('driver_bp.sponsor_info_select'))
+    
+    # Get the organization
+    organization = Organization.query.get_or_404(org_id)
+    
+    # Get all sponsors in this organization with their user information
+    sponsors = db.session.query(Sponsor, User).join(
+        User, Sponsor.USER_CODE == User.USER_CODE
+    ).filter(Sponsor.ORG_ID == org_id).all()
+    
+    return render_template('driver/sponsor_info_details.html', 
+                         organization=organization, 
+                         sponsors=sponsors,
+                         driver_association=association)
  
 @driver_bp.route('/register', methods=['POST'])
 @unauthenticated_only(redirect_to='driver_bp.dashboard')
