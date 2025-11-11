@@ -160,7 +160,16 @@ def list_sponsor_users():
 @sponsor_bp.route('/dashboard')
 @role_required(Role.SPONSOR, allow_admin=True)
 def dashboard():
-    return render_template('sponsor/dashboard.html')
+    # --- ADD THIS LOGIC ---
+    # Fetch the sponsor record for the current user
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    organization = None
+    if sponsor and sponsor.organization: #
+        organization = sponsor.organization #
+    
+    # Pass the sponsor and organization objects to the template
+    return render_template('sponsor/dashboard.html', sponsor=sponsor, organization=organization)
+    # --- END OF CHANGE ---
 
 # Update Store Settings
 @sponsor_bp.route('/settings', methods=['GET', 'POST'])
@@ -194,6 +203,7 @@ def manage_points_page():
     """Display all drivers for awarding or removing points, with search and active/inactive filtering."""
     search_query = request.args.get("search", "").strip()
     status_filter = request.args.get("status", "").strip()
+    sort_by = request.args.get("sort", "username_asc")
 
     # Fetch all associations for this sponsor
     sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
@@ -225,11 +235,20 @@ def manage_points_page():
             if getattr(d["user"], "IS_ACTIVE", 1) == 0
         ]
 
+    if sort_by == 'points_desc':
+        driver_data = sorted(driver_data, key=lambda d: d['points'], reverse=True)
+    elif sort_by == 'points_asc':
+        driver_data = sorted(driver_data, key=lambda d: d['points'])
+    elif sort_by == 'username_desc': 
+        driver_data = sorted(driver_data, key=lambda d: d['user'].USERNAME.lower(), reverse=True)
+    else: 
+        driver_data = sorted(driver_data, key=lambda d: d['user'].USERNAME.lower())
+
     # Calculate total and average points
     total_points = sum(d["points"] for d in driver_data)
     avg_points = round(total_points / len(driver_data), 2) if driver_data else 0
 
-    return render_template('sponsor/points.html', drivers=driver_data, total_points=total_points, avg_points=avg_points)
+    return render_template('sponsor/points.html', drivers=driver_data, total_points=total_points, avg_points=avg_points, current_sort=sort_by, search_query=search_query, status_filter=status_filter)
 
 
 
@@ -287,6 +306,15 @@ def manage_points(driver_id):
         flash(f"✅ Successfully awarded {points} points to {driver.USERNAME}.", "success")
 
     elif action == "remove":
+        if association.points < points:
+            flash(f"Cannot remove {points} points. Driver only has {association.points} points.", "danger")
+            
+            # Need to return the redirect with the filter/sort state
+            search = request.form.get('search_query', '')
+            status = request.form.get('status_filter', '')
+            sort = request.form.get('current_sort', 'username_asc')
+            return redirect(url_for('sponsor_bp.manage_points_page', search=search, status=status, sort=sort))
+        
         association.points -= points
         db.session.commit()
 
@@ -304,7 +332,11 @@ def manage_points(driver_id):
 
         flash(f"⚠️ Removed {points} points from {driver.USERNAME}.", "info")
 
-    return redirect(url_for('sponsor_bp.manage_points_page'))
+    search = request.form.get('search_query', '')
+    status = request.form.get('status_filter', '')
+    sort = request.form.get('current_sort', 'username_asc')
+
+    return redirect(url_for('sponsor_bp.manage_points_page', search=search, status=status, sort=sort))
 
 
 
@@ -405,8 +437,61 @@ def driver_management():
         flash("Sponsor record not found.", "danger")
         return redirect(url_for('sponsor_bp.dashboard'))
     
-    drivers = get_accepted_drivers_for_sponsor(sponsor.ORG_ID)
-    return render_template('sponsor/my_organization_drivers.html', drivers=drivers)
+    sort_by = request.args.get('sort', 'username_asc')
+    search_query = request.args.get("search", "").strip()
+    
+    # Get all accepted driver IDs for this sponsor's organization (This was already in your function)
+    accepted_drivers = get_accepted_drivers_for_sponsor(sponsor.ORG_ID)
+
+    if not accepted_drivers:
+        print("⚠️ No accepted drivers found.")
+        return render_template('sponsor/my_organization_drivers.html', 
+                               drivers_with_points=[], 
+                               current_sort=sort_by, 
+                               search_query=search_query)
+
+    points_associations = DriverSponsorAssociation.query.filter_by(ORG_ID=sponsor.ORG_ID).all()
+    points_map = {assoc.driver_id: assoc.points for assoc in points_associations}
+
+    print(f"Points map: {points_map}")
+
+    driver_data = [
+        {
+            "user": driver,
+            "points": points_map.get(driver.USER_CODE, 0) # Get points from map, default to 0
+        }
+        for driver in accepted_drivers
+    ]
+
+
+    if search_query:
+        driver_data = [
+            d for d in driver_data
+            if getattr(d["user"], "USERNAME", "").lower() == search_query.lower()
+        ]
+
+    print("Driver data being sent to template:")
+    for d in driver_data:
+        print(f"  {d['user'].USERNAME} -> {d['points']} points")
+
+    if sort_by == 'points_desc':
+        driver_data.sort(key=lambda d: d['points'], reverse=True)
+    elif sort_by == 'points_asc':
+        driver_data.sort(key=lambda d: d['points'])
+    elif sort_by == 'username_desc': 
+        driver_data.sort(key=lambda d: d['user'].USERNAME.lower(), reverse=True)
+    else: 
+        driver_data.sort(key=lambda d: d['user'].USERNAME.lower())
+
+    print(f"✅ Final sorted driver list ({sort_by}): {[d['user'].USERNAME for d in driver_data]}")
+    print("===========================================\n")
+
+    # --- 6. MODIFIED: Pass new data and state to template ---
+    # The template now receives the list of dictionaries and the current sort/search state.
+    return render_template('sponsor/my_organization_drivers.html', 
+                           drivers_with_points=driver_data, 
+                           current_sort=sort_by, 
+                           search_query=search_query)
 
 # Sponsor Review Applications
 @sponsor_bp.route("/applications")

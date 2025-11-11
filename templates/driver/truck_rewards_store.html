@@ -4,52 +4,279 @@
 
 {% block styles %}
   {{ super() }}
-  {# Re-uses the existing CSS from the original rewards store #}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/truck-rewards.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    /* ------------------------------
+       Layout & Typography
+    ------------------------------ */
+    body {
+      color: #f8f9fa;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: #f8f9fa;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+
+    p {
+      color: #adb5bd;
+    }
+
+    /* ------------------------------
+       Filter Bar Styling
+    ------------------------------ */
+    #search-form {
+      background-color: #1f1f1f;
+      border: 1px solid #2b2b2b;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      min-width: 160px;
+    }
+
+    .input-group label {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #f1f3f5;
+    }
+
+    .price-range {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .price-range input {
+      width: 100%;
+      background-color: #2a2a2a;
+      color: #f8f9fa;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 0.35rem 0.5rem;
+    }
+
+    #search-input {
+      background-color: #2a2a2a;
+      color: #f8f9fa;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 0.35rem 0.5rem;
+    }
+
+    .btn-primary {
+      background-color: #0d6efd;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      background-color: #0b5ed7;
+    }
+
+    /* ------------------------------
+       Sort Links
+    ------------------------------ */
+    .sort-links {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    a.sort-link {
+      color: #0d6efd;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 0.35rem 0.55rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: 0.2s;
+    }
+
+    a.sort-link:hover {
+      background-color: #2a2a2a;
+    }
+
+    a.sort-link.active {
+      background-color: #0d6efd;
+      color: white;
+    }
+
+    a.sort-link .arrow-up,
+    a.sort-link .arrow-down {
+      display: none;
+      margin-left: 0.25rem;
+    }
+
+    a.sort-link.active.sort-asc .arrow-up,
+    a.sort-link.active.sort-desc .arrow-down {
+      display: inline-block;
+    }
+
+    /* ------------------------------
+       Product Grid & Cards
+    ------------------------------ */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .product-card {
+      background-color: #1f1f1f;
+      border-radius: 16px;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .product-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .product-card img {
+      max-width: 100%;
+      height: 180px;
+      object-fit: contain;
+      border-radius: 8px;
+      background-color: #2a2a2a;
+      margin-bottom: 0.75rem;
+    }
+
+    .product-card .title {
+      font-weight: 600;
+      font-size: 1rem;
+      color: #f8f9fa;
+      margin-bottom: 0.4rem;
+      min-height: 2.4em;
+    }
+
+    .product-card .price {
+      font-size: 1rem;
+      color: #8be68b;
+      font-weight: 600;
+      margin: 0; /* tighten gap below price */
+      line-height: 1.1;
+    }
+
+    .product-card .points {
+      color: #adb5bd;
+      margin: 0.1rem 0 0.6rem 0;
+      font-size: 0.9rem;
+      line-height: 1.1;
+    }
+
+    .product-actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.6rem;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .product-actions button {
+      background-color: #9acd32; /* same bright green as Search/View Cart */
+      color: #1f1f1f;
+      border: none;
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .product-actions button:hover {
+      background-color: #b7e14f; /* slightly lighter on hover */
+      transform: translateY(-2px);
+    }
+
+    /* ------------------------------
+       Responsive
+    ------------------------------ */
+    @media (max-width: 768px) {
+      #search-form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .product-actions {
+        flex-direction: column;
+      }
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
-  {# The sponsor's name could be passed from the backend for a more personal touch #}
-  <h1>Sponsor Rewards Store</h1>
-  <p>Your points for this store are specific to this sponsor.</p>
-  <a href="{{ url_for('rewards_bp.view_cart', sponsor_id=org_id) }}" class="btn btn-primary mb-3">View Your Cart</a>
-
-  {# This token is important for making secure POST requests (e.g., adding to cart) #}
-  <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token() }}">
-  {# Hidden input to store the org_id, making it accessible to JavaScript #}
-  <input type="hidden" id="org_id" name="org_id" value="{{ org_id }}">
-
-
   <section class="points-store">
-    {# The search form remains the same as the original store #}
-    <div style="margin-bottom: 2rem; max-width: 500px;">
-      <form id="search-form" style="display: flex; gap: 0.5rem; max-width: none;">
-        <input type="text" id="search-input" placeholder="Search for items..." style="width: 100%;">
-        <input type="number" id="min-price" placeholder="Min $" style="width: 80px;">
-        <input type="number" id="max-price" placeholder="Max $" style="width: 80px;">
-        <button type="submit" style="width: auto; padding: 0.4rem 1rem;">Search</button>
-      </form>
-    </div>
+    <h1>Sponsor Rewards Store</h1>
+    <p>Your points for this store are specific to this sponsor.</p>
+    <a href="{{ url_for('rewards_bp.view_cart', sponsor_id=org_id) }}" class="btn btn-primary mb-3">
+      <i class="fas fa-shopping-cart"></i> View Your Cart
+    </a>
 
-    {# This is where the products will be dynamically loaded by your JavaScript #}
-    <div id="products" class="product-grid">
+    <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" id="org_id" name="org_id" value="{{ org_id }}">
+    <input type="hidden" id="current_sort" value="name_asc">
+
+    <form id="search-form">
+      <div class="input-group">
+        <label for="search-input">Search</label>
+        <input type="text" id="search-input" class="form-control" placeholder="Search for items...">
+      </div>
+
+      <div class="input-group">
+        <label>Price</label>
+        <div class="price-range">
+          <input type="number" id="min-price" class="form-control" placeholder="Min $">
+          <input type="number" id="max-price" class="form-control" placeholder="Max $">
         </div>
+      </div>
+
+      <div class="input-group">
+        <label>Sort By</label>
+        <div class="sort-links">
+          <a href="#" class="sort-link" id="sort-name" data-sort-by="name">
+            Name <span class="arrow-up">▲</span><span class="arrow-down">▼</span>
+          </a>
+          <a href="#" class="sort-link" id="sort-price" data-sort-by="price">
+            Price <span class="arrow-up">▲</span><span class="arrow-down">▼</span>
+          </a>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
+    <div id="products" class="product-grid"></div>
   </section>
 {% endblock %}
 
 {% block scripts %}
   {{ super() }}
-  {# Re-uses the existing JavaScript from the original rewards store #}
   <script src="{{ url_for('static', filename='js/truck-rewards.js') }}"></script>
-
   <script>
-
     document.addEventListener('DOMContentLoaded', () => {
       const orgId = document.getElementById('org_id').value;
       if (typeof initializeStore === 'function') {
         initializeStore(orgId);
       } else {
-        console.error('Error: The store initialization function is not available.');
+        console.error('Error: Store initialization function missing.');
       }
     });
   </script>

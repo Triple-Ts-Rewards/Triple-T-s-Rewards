@@ -4,6 +4,8 @@ from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail
+from flask_moment import Moment
+
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -11,3 +13,4 @@ login_manager = LoginManager()
 csrf = CSRFProtect()
 bcrypt = Bcrypt()
 mail = Mail()
+moment = Moment()

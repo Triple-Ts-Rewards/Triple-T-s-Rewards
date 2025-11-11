@@ -39,4 +39,16 @@
     </div>
   </div>
 </section>
+
+<p style="margin-top: 1.5rem; text-align: center;">
+  {% if current_user.USER_TYPE == 'admin' %}
+    <a class="btn btn-outline" href="{{ url_for('administrator_bp.dashboard') }}">← Back to Admin Dashboard</a>
+  {% elif current_user.USER_TYPE == 'sponsor' %}
+    <a class="btn btn-outline" href="{{ url_for('sponsor_bp.dashboard') }}">← Back to Sponsor Dashboard</a>
+  {% elif current_user.USER_TYPE == 'driver' %}
+    <a class="btn btn-outline" href="{{ url_for('driver_bp.dashboard') }}">← Back to Driver Dashboard</a>
+  {% else %}
+    <a class="btn btn-outline" href="{{ url_for('common.index') }}">← Back to Home</a>
+  {% endif %}
+</p>
 {% endblock %}
