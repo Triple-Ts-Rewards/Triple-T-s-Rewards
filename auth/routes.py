@@ -13,6 +13,9 @@ from extensions import db
 from sqlalchemy import or_
 from common.emailer import send_email
 from common.logging import log_audit_event, LOGIN_EVENT
+from common.decorators import unauthenticated_only
+from . import auth_bp
+
 
 auth_bp = Blueprint("auth", __name__, template_folder="../templates")
 
@@ -475,5 +478,6 @@ def reset_token(token: str):
     return render_template("common/reset_with_token.html", token=token)
 
 @auth_bp.route('/signup', methods=['GET'])
+@unauthenticated_only(redirect_to='driver_bp.dashboard') 
 def signup_page():
     return render_template('common/driver_signup.html')
