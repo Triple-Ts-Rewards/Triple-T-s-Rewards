@@ -21,3 +21,19 @@ def role_required(*allowed_roles, allow_admin=True, redirect_to=None):
             abort(403)
         return wrapped
     return decorator
+
+def unauthenticated_only(redirect_to='driver_bp.dashboard'):
+    """
+    Redirects an authenticated user away from a route (like /login or /signup).
+    
+    :param redirect_to: The endpoint to redirect the user to if they are logged in.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if current_user.is_authenticated:
+                flash('You are already logged in.', 'info')
+                return redirect(url_for(redirect_to))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator

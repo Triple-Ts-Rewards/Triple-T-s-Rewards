@@ -1,7 +1,7 @@
 # triple-ts-rewards/triple-t-s-rewards/Triple-T-s-Rewards-72ca7a46f1915a7f669f3692e9b77d23b248eaee/driver/routes.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
-from common.decorators import role_required
+from common.decorators import role_required, unauthenticated_only
 from common.logging import DRIVER_POINTS, log_audit_event, LOGIN_EVENT
 from models import Role, AuditLog, User, db, Sponsor, DriverApplication, Address, StoreSettings, Driver, Notification, LOCKOUT_ATTEMPTS, Organization, DriverSponsorAssociation
 from extensions import bcrypt
@@ -369,7 +369,9 @@ def redirect_to_cart():
 
  
 @driver_bp.route('/register', methods=['POST'])
+@unauthenticated_only(redirect_to='driver_bp.dashboard')
 def register_driver():
+    
     form_data = request.form
     
     # Check for existing Username/Email
