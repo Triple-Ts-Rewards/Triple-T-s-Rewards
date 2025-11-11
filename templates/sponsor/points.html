@@ -135,6 +135,9 @@
     <p>There are no drivers currently associated with your organization.</p>
     {% endif %}
 </div>
+<p style="margin-top: 1.5rem; text-align: center;">
+  <a class="btn btn-outline" href="{{ url_for('sponsor_bp.dashboard') }}">← Back to Sponsor Dashboard</a>
+</p>
 {% block scripts %}
 {{ super() }}
 <script>

@@ -29,8 +29,10 @@
                             <input type="file" class="form-control" id="file" name="file" accept=".txt" required>
                             <div class="form-text">Upload a text file with pipe-delimited records.</div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Process File</button>
-                        <a href="{{ url_for('bulk_loading_bp.download_template') }}" class="btn btn-secondary">Download Template</a>
+                        <div style="display: flex; gap: 1rem;">
+                          <button type="submit" class="btn btn-primary flex-fill">Process File</button>
+                          <a href="{{ url_for('bulk_loading_bp.download_template') }}" class="btn btn-primary flex-fill">Download Template</a>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -94,8 +96,8 @@
     {% endif %}
 
     <div class="mt-4">
-        <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
-        <a href="{{ url_for('bulk_loading_bp.view_logs') }}" class="btn btn-outline-info">View All Logs</a>
+        <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline">Back to Dashboard</a>
+        <a href="{{ url_for('bulk_loading_bp.view_logs') }}" class="btn btn-outline">View All Logs</a>
     </div>
 </div>
 {% endblock %}
