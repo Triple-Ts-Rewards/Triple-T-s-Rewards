@@ -181,15 +181,25 @@ input:checked + .slider::before {
    h2 { font-size: 1.8rem; }
    h3 { font-size: 1.35rem; }
    
-   .app-main-content h1::after,
-   .app-main-content h2::after {
-     content: "";
-     display: block;
-     width: 80px;
-     height: 3px;
-     margin-top: 0.35rem;
-     background-color: var(--brand-accent);
-   }
+.app-main-content h1,
+.app-main-content h2 {
+  display: inline-block;
+  position: relative;
+  text-align: inherit;
+  padding-bottom: 0.4rem; /* space for underline */
+}
+
+.app-main-content h1::after,
+.app-main-content h2::after {
+  content: "";
+  position: absolute;
+  left: 0;                   /* aligns underline to left edge of text */
+  bottom: 0;                 /* sits flush with bottom of text block */
+  width: 100%;               /* matches text width */
+  height: 3px;
+  background-color: var(--brand-accent);
+  border-radius: 2px;
+}
    
    /* ================= Focus ================= */
    :focus-visible {
@@ -762,14 +772,15 @@ input:checked + .slider::before {
    Apply to Sponsor Page Styles
    ========================================================= */
 .apply-form {
-  max-width: 600px;
-  margin: 2rem auto;
-  padding: 2rem;
+  width: 300px;
+  margin: 2.5rem 44rem auto;
+  padding: 3rem 2.5rem;
+  border-radius: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  transition: background 0.3s ease, border-color 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  position: relative;
+  z-index: 1;
 }
 
 /* Headline */
@@ -836,7 +847,7 @@ input:checked + .slider::before {
 /* Submit + Cancel buttons */
 .apply-form .form-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 1rem;
   margin-top: 1.5rem;
 }
@@ -1066,4 +1077,145 @@ html, body, .app-root, .site-nav, .app-sidebar, .app-main-content {
 .impersonation-banner .btn.small {
   padding: 0.3rem 0.5rem;
   font-size: 0.875rem;
+}
+/* ================= Reset Password Page ================= */
+.reset-page .apply-form {
+  /*max-width: 5000px;*/
+  width: 300px;
+  margin: 2.5rem 44rem auto;
+  padding: 3rem 2.5rem;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  position: relative;
+  z-index: 1;
+}
+
+.reset-page h2 {
+  font-size: 2.25rem;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.reset-page .form-group {
+  margin-bottom: 1.8rem;
+}
+
+.reset-page input {
+  height: 2.8rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.reset-page .form-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.reset-page .btn {
+  padding: 0.8rem 1.8rem;
+  font-size: 1rem;
+  border-radius: 8px;
+}
+/* ================= Homepage Styles ================= */
+.homepage {
+  text-align: center;
+  padding: 5rem 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.homepage h1 {
+  font-size: 2.8rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.homepage .accent-text {
+  color: var(--brand-accent);
+}
+
+.homepage .tagline {
+  font-size: 1.3rem;
+  margin-bottom: 2rem;
+  color: var(--text-muted);
+}
+
+.homepage .lead {
+  font-size: 1.1rem;
+  margin: 1.5rem 0;
+}
+
+.homepage .divider {
+  width: 60%;
+  margin: 2rem auto;
+  border: none;
+  height: 2px;
+  background-color: var(--border);
+  border-radius: 1px;
+}
+
+.homepage .btn {
+  margin: 0.5rem;
+}
+
+/* Center homepage content when sidebar is not visible */
+body:not(.has-sidebar) .homepage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: calc(100vh - 160px); /* keeps footer spacing clean */
+  margin: 0 auto;
+  max-width: 900px;
+  padding: 3rem 1.5rem;
+}
+
+/* Ensure homepage is centered inside app-layout when no sidebar is visible */
+body:not(.has-sidebar) .app-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+body:not(.has-sidebar) .app-main-content {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: .5rem 1rem;
+}
+
+body:not(.has-sidebar) .homepage {
+  text-align: center;
+  margin: 0 auto;
+  max-width: 900px;
+  width: 100%;
+}
+
+/* Center login and other standalone forms when sidebar is hidden */
+body:not(.has-sidebar) .app-layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+body:not(.has-sidebar) .app-main-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem 1rem;
+}
+
+body:not(.has-sidebar) .apply-form {
+  margin: 0 auto;
 }

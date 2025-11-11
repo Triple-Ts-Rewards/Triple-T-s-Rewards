@@ -20,7 +20,7 @@
   {% block styles %}{% endblock %}
 </head>
 
-<body>
+<body class="{% if current_user.is_authenticated %}has-sidebar{% endif %}">
 
     {# include universal navbar #}
   {% include "partials/navbar.html" %}
