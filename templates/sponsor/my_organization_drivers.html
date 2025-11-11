@@ -4,8 +4,7 @@
 <div class="container mt-4">
     <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline">← Back to Dashboard</a>
     <h2 class="mb-3">Accepted Drivers in My Organization</h2>
-    <p class="text-muted">This list shows only the drivers you have officially accepted (STATUS='Accepted').</p>
-
+    
     {% if drivers %}
     <table class="table table-striped table-hover">
         <thead class="thead-dark">
@@ -27,21 +26,21 @@
                 <td><span class="badge bg-primary">{{ driver.POINTS }}</span></td>
                 <td>
                     <a href="{{ url_for('sponsor_bp.manage_points_page') }}?driver_id={{ driver.USER_CODE }}" 
-                       class="btn btn-sm btn-info">Manage Points</a>
+                       class="btn btn-outline">Manage Points</a>
 
                     <form method="POST" 
                           action="{{ url_for('sponsor_bp.reset_driver_password', driver_id=driver.USER_CODE) }}" 
                           style="display:inline;" 
                           onsubmit="return confirm('Are you sure you want to reset {{ driver.USERNAME }}\'s password? This will generate a new temporary password.');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-sm btn-warning">Reset Password</button>
+                        <button type="submit" class="btn btn-outline">Reset Password</button>
                     </form>
 
                     <form method="POST" 
                           action="{{ url_for('impersonation_bp.start_impersonation', target_id=driver.USER_CODE) }}" 
                           style="display:inline;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-sm btn-outline-primary">Impersonate</button>
+                        <button type="submit" class="btn btn-outline">Impersonate</button>
                     </form>
                 </td>
             </tr>

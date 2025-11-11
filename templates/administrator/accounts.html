@@ -14,25 +14,6 @@
 {% block content %}
   <div class="container">
     <div class="card">
-      {# Flash messages using your .alert styles #}
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="flash-messages">
-            {% for category, message in messages %}
-              {% if category == 'success' %}
-                <div class="alert success" role="alert">{{ message }}</div>
-              {% elif category == 'danger' %}
-                <div class="alert error" role="alert">{{ message }}</div>
-              {% elif category == 'warning' %}
-                <div class="alert warning" role="alert">{{ message }}</div>
-              {% else %}
-                <div class="alert" role="status">{{ message }}</div>
-              {% endif %}
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
-
       <div class="app-header-row" style="display:flex; align-items:center; gap:.75rem; margin-bottom:1rem;">
         <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline" aria-label="Back to Administrator Dashboard">
           ← Back
@@ -52,7 +33,7 @@
         <div id="role-filter" style="display:none; flex-wrap:wrap; gap:.5rem; background:#f7f7f7; padding:1rem; border-radius:6px;">
           <select name="role" class="input" style="padding:.5rem;">
             <option value="">All Roles</option>
-            <option value="admin" {% if request.args.get('role') == 'admin' %}selected{% endif %}>Admin</option>
+            <option value="administrator" {% if request.args.get('role') == 'administrator' %}selected{% endif %}>Admin</option>
             <option value="sponsor" {% if request.args.get('role') == 'sponsor' %}selected{% endif %}>Sponsor</option>
             <option value="driver" {% if request.args.get('role') == 'driver' %}selected{% endif %}>Driver</option>
           </select>
@@ -98,12 +79,14 @@
               <td>{{ user.CREATED_AT.strftime('%Y-%m-%d %H:%M') }}</td>
               <td>
                 <div style="display:flex; gap:.5rem; align-items:center;">
+                  {% if user.USER_CODE != current_user.USER_CODE %}
                   <form method="POST" action="{{ url_for('impersonation_bp.start_impersonation', target_id=user.USER_CODE) }}" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="btn btn-outline small" title="Impersonate this user">
                       Impersonate
                     </button>
                   </form>
+                  {% endif %}
 
                   <a
                     href="{{ url_for('administrator_bp.edit_user', user_id=user.USER_CODE) }}"

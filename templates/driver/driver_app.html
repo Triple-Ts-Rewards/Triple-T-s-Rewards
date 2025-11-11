@@ -3,17 +3,6 @@
 <main class="app-main-content container">
   <div class="apply-form">
     <h2>Apply to a Sponsor</h2>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul class="flashes">
-          {% for category, message in messages %}
-            <li class="{{ category }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
-
     <form method="POST" action="{{ url_for('driver_bp.apply_driver') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 

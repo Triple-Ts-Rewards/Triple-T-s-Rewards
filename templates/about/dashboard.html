@@ -25,14 +25,6 @@
       <li>Product Description: {{ about_info.product_desc or 'N/A' }}</li>
     </ul>
 
-    {# The base template usually handles flash messages inside the main content block, 
-       but if you need them here specifically, keep them: #}
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for category, message in messages %}
-        <div class="flash-messages {{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endwith %}
-
 {% endblock %}
 
 {# 3. You don't need a scripts block unless you have *extra* scripts specific to the about page #}
