@@ -207,6 +207,18 @@ def manage_points_page():
 
     # Fetch all associations for this sponsor
     sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+
+    # Restrict access if sponsor has no organization or no drivers
+    if not sponsor or not sponsor.ORG_ID:
+        flash("You must belong to an organization to access this page.", "warning")
+        return redirect(url_for('sponsor_bp.dashboard'))
+
+    # Check if sponsor has any drivers under their organization
+    driver_count = DriverSponsorAssociation.query.filter_by(ORG_ID=sponsor.ORG_ID).count()
+    if driver_count == 0:
+        flash("You must have at least one driver in your organization to access this page.", "warning")
+        return redirect(url_for('sponsor_bp.dashboard'))
+
     associations = DriverSponsorAssociation.query.filter_by(ORG_ID=sponsor.ORG_ID).all()
 
     # Combine driver user info with their points
