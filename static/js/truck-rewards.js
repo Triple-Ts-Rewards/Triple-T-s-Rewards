@@ -17,8 +17,8 @@ function updateSortUI(currentSort) {
   }
 }
 
-function initializeStore(sponsorId) {
-  loadProducts(sponsorId); 
+function initializeStore(sponsorId, productsUrl) {
+  loadProducts(sponsorId, productsUrl); 
   updateSortUI(document.getElementById('current_sort').value);
 
   const searchForm = document.getElementById('search-form');
@@ -34,18 +34,28 @@ function initializeStore(sponsorId) {
   }
 }
 
-async function loadProducts(sponsorId, query = '', minPrice = '', maxPrice = '', page = 1) {
+async function loadProducts(sponsorId, productsUrl, query = '', minPrice = '', maxPrice = '', page = 1) {
+  const container = document.getElementById('products');
+  if (!container) {
+    console.error("❌ No #products container found — aborting loadProducts()");
+    return;
+  }
+
   try {
     const sortBy = document.getElementById('current_sort').value;
     const limit = 20;
 
-    const baseUrl = document.getElementById("products_url")?.value || `/truck-rewards/products/${sponsorId}`;
-    let url = `${baseUrl}?q=${encodeURIComponent(query)}`;
+    // ✅ Use the passed-in productsUrl or fallback
+    const baseUrl = productsUrl || document.getElementById("products_url")?.value || `/truck-rewards/products/${sponsorId}`;
+    let url = `${baseUrl}?page=${page}`;
+
+    if (query) url += `&q=${encodeURIComponent(query)}`;
     if (minPrice) url += `&min_price=${encodeURIComponent(minPrice)}`;
     if (maxPrice) url += `&max_price=${encodeURIComponent(maxPrice)}`;
 
-    const response = await fetch(url);
+    console.log("🔎 Fetching products from:", url);
 
+    const response = await fetch(url);
     if (!response.ok) {
       const text = await response.text();
       console.error("Response not OK:", response.status, text);
@@ -57,7 +67,6 @@ async function loadProducts(sponsorId, query = '', minPrice = '', maxPrice = '',
     const totalPages = data.pages || 1;
     const currentPage = data.page || 1;
 
-    const container = document.getElementById("products");
     container.innerHTML = "";
 
     if (products.length === 0) {
@@ -66,7 +75,7 @@ async function loadProducts(sponsorId, query = '', minPrice = '', maxPrice = '',
       return;
     }
 
-    // Sorting logic (unchanged)
+    // ✅ Sorting logic
     switch (sortBy) {
       case 'name_asc':
         products.sort((a, b) => a.title.localeCompare(b.title));
@@ -82,7 +91,7 @@ async function loadProducts(sponsorId, query = '', minPrice = '', maxPrice = '',
         break;
     }
 
-    // Render products
+    // ✅ Render products
     products.forEach(p => {
       const card = document.createElement("div");
       card.className = "product-card";
@@ -100,15 +109,15 @@ async function loadProducts(sponsorId, query = '', minPrice = '', maxPrice = '',
       container.appendChild(card);
     });
 
-    // Render pagination below products
+    // ✅ Render pagination below products
     renderPagination(currentPage, totalPages, sponsorId, query, minPrice, maxPrice);
 
-    // Smooth scroll back to top of grid when page changes
+    // Smooth scroll back to top
     window.scrollTo({ top: container.offsetTop - 120, behavior: 'smooth' });
 
   } catch (err) {
     console.error("Error loading products:", err);
-    document.getElementById("products").innerHTML = "<p>Error loading products.</p>";
+    container.innerHTML = "<p>Error loading products.</p>";
   }
 }
 
