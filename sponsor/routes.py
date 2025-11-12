@@ -505,6 +505,68 @@ def driver_management():
                            current_sort=sort_by, 
                            search_query=search_query)
 
+
+# POST /sponsor/drivers/<driver_id>/drop
+@sponsor_bp.route("/drivers/<int:driver_id>/drop", methods=["POST"], endpoint="drop_driver")
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def drop_driver(driver_id: int):
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor:
+        flash("Sponsor record not found.", "danger")
+        return redirect(url_for("sponsor_bp.driver_management"))
+
+    driver_user = User.query.get(driver_id)
+    if not driver_user or driver_user.USER_TYPE != Role.DRIVER:
+        flash("Driver not found.", "danger")
+        return redirect(url_for("sponsor_bp.driver_management"))
+
+    # IMPORTANT: use ORG_ID here (matches your schema)
+    app = DriverApplication.query.filter_by(
+        DRIVER_ID=driver_id,           # DRIVER_ID matches USERS.USER_CODE in your schema
+        ORG_ID=sponsor.ORG_ID,
+        STATUS="Accepted"
+    ).first()
+    
+     # IMPORTANT: use ORG_ID here (matches your schema)
+    assoc = DriverSponsorAssociation.query.filter_by(
+        driver_id=driver_id,
+        ORG_ID=sponsor.ORG_ID
+    ).first()
+
+
+    if not app and not assoc:
+        flash("That driver is not currently in your organization.", "warning")
+        return redirect(url_for("sponsor_bp.driver_management"))
+
+     # 5) Mark the application as no longer accepted (you can use 'Rejected' or 'Dropped')
+    if app:
+        app.STATUS = "Rejected"  # or "Dropped" if you add that to the Enum
+
+    # 6) Delete the association row so points link is gone
+    if assoc:
+        db.session.delete(assoc)
+        
+    db.session.commit()
+
+    # notify driver (non-blocking if you like)
+    try:
+        Notification.create_notification(
+            recipient_code=driver_user.USER_CODE,
+            sender_code=current_user.USER_CODE,
+            message=(f"You have been removed from the organization "
+                     f"managed by sponsor '{current_user.USERNAME}'.")
+        )
+    except Exception as e:
+        log_audit_event("DROP_DRIVER_NOTIFY_FAIL",
+                        f"driver={driver_user.USERNAME} err={e}")
+
+    log_audit_event("DRIVER_DROPPED",
+                    f"sponsor={current_user.USERNAME} driver={driver_user.USERNAME}")
+
+    flash(f"Driver '{driver_user.USERNAME}' has been removed from your organization.", "info")
+    return redirect(url_for("sponsor_bp.driver_management"))
+
 # Sponsor Review Applications
 @sponsor_bp.route("/applications")
 @login_required
