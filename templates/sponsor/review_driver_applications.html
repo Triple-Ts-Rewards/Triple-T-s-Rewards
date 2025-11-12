@@ -10,26 +10,6 @@
   <div class="container">
     <div class="card">
       <h1>Pending Driver Applications</h1>
-
-      {# Flash messages using your alert styles #}
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="flash-messages">
-            {% for category, message in messages %}
-              {% if category == 'success' %}
-                <div class="alert success" role="alert">{{ message }}</div>
-              {% elif category == 'danger' %}
-                <div class="alert error" role="alert">{{ message }}</div>
-              {% elif category == 'warning' %}
-                <div class="alert warning" role="alert">{{ message }}</div>
-              {% else %}
-                <div class="alert" role="status">{{ message }}</div>
-              {% endif %}
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
-
       {% if applications %}
         <table aria-describedby="pending-apps-caption">
           <caption id="pending-apps-caption" class="text-muted" style="text-align:left; padding:.5rem 0;">

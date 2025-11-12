@@ -67,14 +67,14 @@
                           style="display:inline;" 
                           onsubmit="return confirm('Are you sure you want to reset {{ driver.user.USERNAME }}\'s password? This will generate a new temporary password.');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-sm btn-warning">Reset Password</button>
+                        <button type="submit" class="btn btn-outline">Reset Password</button>
                     </form>
 
                     <form method="POST" 
                           action="{{ url_for('impersonation_bp.start_impersonation', target_id=driver.user.USER_CODE) }}" 
                           style="display:inline;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-sm btn-outline-primary">Impersonate</button>
+                        <button type="submit" class="btn btn-outline">Impersonate</button>
                     </form>
                 </td>
             </tr>
