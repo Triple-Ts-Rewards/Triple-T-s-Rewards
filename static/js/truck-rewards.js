@@ -39,7 +39,8 @@ async function loadProducts(sponsorId, query = '', minPrice = '', maxPrice = '',
     const sortBy = document.getElementById('current_sort').value;
     const limit = 20;
 
-    let url = `/truck-rewards/products/${sponsorId}?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`;
+    const baseUrl = document.getElementById("products_url")?.value || `/truck-rewards/products/${sponsorId}`;
+    let url = `${baseUrl}?q=${encodeURIComponent(query)}`;
     if (minPrice) url += `&min_price=${encodeURIComponent(minPrice)}`;
     if (maxPrice) url += `&max_price=${encodeURIComponent(maxPrice)}`;
 
