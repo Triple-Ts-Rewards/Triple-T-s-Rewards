@@ -34,82 +34,74 @@ function initializeStore(sponsorId) {
   }
 }
 
-async function loadProducts(sponsorId, query = '', minPrice = '', maxPrice = '') {
-  try {
-
+async function loadProducts(sponsorId, query = '', minPrice = '', maxPrice = '', page = 1) {
+  try {
     const sortBy = document.getElementById('current_sort').value;
+    const limit = 20;
 
-    let url = `/truck-rewards/products/${sponsorId}?q=${encodeURIComponent(query)}`;
-    if (minPrice) url += `&min_price=${encodeURIComponent(minPrice)}`;
-    if (maxPrice) url += `&max_price=${encodeURIComponent(maxPrice)}`;
+    let url = `/truck-rewards/products/${sponsorId}?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`;
+    if (minPrice) url += `&min_price=${encodeURIComponent(minPrice)}`;
+    if (maxPrice) url += `&max_price=${encodeURIComponent(maxPrice)}`;
 
-    const response = await fetch(url);
-    let products = await response.json(); // Changed to 'let' to allow sorting
+    const response = await fetch(url);
+    const data = await response.json();
+    const products = data.products || [];
+    const totalPages = data.pages || 1;
+    const currentPage = data.page || 1;
 
-    const container = document.getElementById("products");
-    container.innerHTML = "";
+    const container = document.getElementById("products");
+    container.innerHTML = "";
 
-    if (products.error) {
-      container.innerHTML = `<p>Error loading products: ${products.error}</p>`;
-      return;
-    }
-
-    if (products.length === 0) {
-      container.innerHTML = "<p>No products found in this sponsor's store.</p>";
-      return;
-    }
-
-    try {
-        switch (sortBy) {
-            case 'name_asc':
-                products.sort((a, b) => {
-                    return a.title.localeCompare(b.title) || (a.pointsEquivalent - b.pointsEquivalent);
-                });
-                break;
-            case 'name_desc':
-                products.sort((a, b) => {
-                    return b.title.localeCompare(a.title) || (a.pointsEquivalent - b.pointsEquivalent);
-                });
-                break;
-            case 'price_asc':
-                products.sort((a, b) => {
-                    return (a.pointsEquivalent - b.pointsEquivalent) || a.title.localeCompare(b.title);
-                });
-                break;
-            case 'price_desc':
-                products.sort((a, b) => {
-                    return (b.pointsEquivalent - a.pointsEquivalent) || a.title.localeCompare(b.title);
-                });
-                break;
-        }
-    } catch (e) {
-        console.error("Sorting error:", e);
+    if (products.length === 0) {
+      container.innerHTML = "<p>No products found in this sponsor's store.</p>";
+      document.getElementById("pagination").innerHTML = "";
+      return;
     }
 
-    products.forEach(p => {
-      const card = document.createElement("div");
-      card.className = "product-card";
-      const imageUrl = p.image || 'https://i.ebayimg.com/images/g/placeholder/s-l225.jpg';
+    // Sorting logic (unchanged)
+    switch (sortBy) {
+      case 'name_asc':
+        products.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'name_desc':
+        products.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      case 'price_asc':
+        products.sort((a, b) => a.pointsEquivalent - b.pointsEquivalent);
+        break;
+      case 'price_desc':
+        products.sort((a, b) => b.pointsEquivalent - a.pointsEquivalent);
+        break;
+    }
 
-      const productData = JSON.stringify(p).replace(/'/g, "&apos;");
-
-      card.innerHTML = `
-        <img src="${imageUrl}" alt="${p.title}">
-        <div class="title">${p.title}</div>
-        <div class="price">$${p.price.toFixed(2)}</div>
-        <div class="points">${p.pointsEquivalent} points</div>
+    // Render products
+    products.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "product-card";
+      const imageUrl = p.image || 'https://i.ebayimg.com/images/g/placeholder/s-l225.jpg';
+      const productData = JSON.stringify(p).replace(/'/g, "&apos;");
+      card.innerHTML = `
+        <img src="${imageUrl}" alt="${p.title}">
+        <div class="title">${p.title}</div>
+        <div class="price">$${p.price.toFixed(2)}</div>
+        <div class="points">${p.pointsEquivalent} points</div>
         <div class="product-actions">
-          <button class="add-to-cart-btn" data-product='${productData}'>Add to Cart</button>
-          <button class="add-to-wishlist-btn" data-product='${productData}'>Add to Wishlist</button>
-        </div>
-      `;
-      container.appendChild(card);
-    });
-  } catch (err) {
-    console.error("Error loading products:", err);
-    const container = document.getElementById("products");
-    container.innerHTML = "<p>A network error occurred while trying to load products.</p>";
-  }
+          <button class="add-to-cart-btn" data-product='${productData}'>Add to Cart</button>
+          <button class="add-to-wishlist-btn" data-product='${productData}'>Add to Wishlist</button>
+        </div>`;
+      container.appendChild(card);
+    });
+
+    // Render pagination below products
+    renderPagination(currentPage, totalPages, sponsorId, query, minPrice, maxPrice);
+
+    // Smooth scroll back to top of grid when page changes
+    window.scrollTo({ top: container.offsetTop - 120, behavior: 'smooth' });
+
+  } catch (err) {
+    console.error("Error loading products:", err);
+    document.getElementById("products").innerHTML = "<p>Error loading products.</p>";
+  }
 }
 
 async function addToCart(productData, sponsorId) {
@@ -203,3 +195,65 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("products").innerHTML = "<p>Error: Could not identify store.</p>";
 s}
 });
+
+function renderPagination(currentPage, totalPages, sponsorId, query, minPrice, maxPrice) {
+  const pagination = document.getElementById("pagination");
+  pagination.innerHTML = "";
+
+  if (totalPages <= 1) return;
+
+  const MAX_VISIBLE_PAGES = 7; // window size
+
+  const createButton = (label, page, disabled = false, active = false) => {
+    const btn = document.createElement("button");
+    btn.textContent = label;
+    if (active) btn.classList.add("active");
+    if (disabled) {
+      btn.disabled = true;
+    } else {
+      btn.onclick = () => loadProducts(sponsorId, query, minPrice, maxPrice, page);
+    }
+    return btn;
+  };
+
+  // Previous button
+  pagination.appendChild(createButton("Previous", currentPage - 1, currentPage === 1));
+
+  // Compute visible range
+  let startPage = Math.max(1, currentPage - Math.floor(MAX_VISIBLE_PAGES / 2));
+  let endPage = startPage + MAX_VISIBLE_PAGES - 1;
+  if (endPage > totalPages) {
+    endPage = totalPages;
+    startPage = Math.max(1, endPage - MAX_VISIBLE_PAGES + 1);
+  }
+
+  // If startPage > 1, show 1 and ellipsis
+  if (startPage > 1) {
+    pagination.appendChild(createButton("1", 1));
+    if (startPage > 2) {
+      const dots = document.createElement("span");
+      dots.textContent = "...";
+      dots.style.color = "#aaa";
+      pagination.appendChild(dots);
+    }
+  }
+
+  // Visible page buttons
+  for (let i = startPage; i <= endPage; i++) {
+    pagination.appendChild(createButton(i, i, false, i === currentPage));
+  }
+
+  // If endPage < totalPages, show ellipsis and last page
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) {
+      const dots = document.createElement("span");
+      dots.textContent = "...";
+      dots.style.color = "#aaa";
+      pagination.appendChild(dots);
+    }
+    pagination.appendChild(createButton(totalPages, totalPages));
+  }
+
+  // Next button
+  pagination.appendChild(createButton("Next", currentPage + 1, currentPage === totalPages));
+}
