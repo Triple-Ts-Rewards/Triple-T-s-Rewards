@@ -47,50 +47,64 @@ def get_ebay_access_token():
         return None
 
 # --- Main Store Route (No longer needed, but can be kept or removed) ---
-@rewards_bp.route('/')
-def store():
-    return render_template('truck-rewards/index.html')
-
-# --- Products API Endpoint ---
 @rewards_bp.route("/products/<int:sponsor_id>")
 @login_required
 def products(sponsor_id):
+    """Fetches paginated products for a sponsor store from eBay."""
     settings = StoreSettings.query.filter_by(ORG_ID=sponsor_id).first()
     if not settings:
         return jsonify({"error": "Store settings not found for this sponsor."}), 404
-        
+
     category_id = settings.ebay_category_id
     point_ratio = settings.point_ratio
-    
-    search_query = request.args.get('q')
-    min_price = request.args.get('min_price')
-    max_price = request.args.get('max_price')
     access_token = get_ebay_access_token()
 
     if not access_token:
         return jsonify({"error": "Could not authenticate with eBay API"}), 500
+
     if USE_SANDBOX:
         search_url = "https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search"
     else:
         search_url = "https://api.ebay.com/buy/browse/v1/item_summary/search"
-    headers = { "Authorization": f"Bearer {access_token}" }
-    params = { "limit": 20 }
+
+    # --- Parameters ---
+    search_query = request.args.get('q')
+    min_price = request.args.get('min_price')
+    max_price = request.args.get('max_price')
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 20, type=int)
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # eBay pagination uses 'offset' instead of 'page'
+    offset = (page - 1) * limit
+
+    params = {
+        "limit": limit,
+        "offset": offset,
+        "category_ids": category_id,
+    }
+
     if search_query:
         params['q'] = search_query
-        params['category_ids'] = category_id
-    else:
-        params['category_ids'] = category_id
+
     filters = []
     if min_price or max_price:
         price_range = f"price:[{min_price or ''}..{max_price or ''}]"
         filters.append(price_range)
         filters.append("priceCurrency:USD")
+
     if filters:
         params['filter'] = ",".join(filters)
+
     try:
         response = requests.get(search_url, headers=headers, params=params)
         response.raise_for_status()
         data = response.json()
+
+        total_items = int(data.get("total", 0))
+        total_pages = (total_items + limit - 1) // limit  # round up
+
         products = []
         for item in data.get("itemSummaries", []):
             if item.get("image"):
@@ -103,8 +117,14 @@ def products(sponsor_id):
                     "image": item.get("image", {}).get("imageUrl", ""),
                     "pointsEquivalent": int(price_float * point_ratio)
                 })
-        print(f"Products found: {len(products)}")
-        return jsonify(products)
+
+        return jsonify({
+            "products": products,
+            "page": page,
+            "pages": total_pages,
+            "total": total_items
+        })
+
     except Exception as e:
         print(f"Error fetching products from eBay: {e}")
         return jsonify({"error": "Could not retrieve products from eBay"}), 500
