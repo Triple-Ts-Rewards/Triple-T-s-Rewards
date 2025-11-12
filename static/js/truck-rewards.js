@@ -44,6 +44,13 @@ async function loadProducts(sponsorId, query = '', minPrice = '', maxPrice = '',
     if (maxPrice) url += `&max_price=${encodeURIComponent(maxPrice)}`;
 
     const response = await fetch(url);
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Response not OK:", response.status, text);
+      throw new Error(`Server error: ${response.status}`);
+    }
+
     const data = await response.json();
     const products = data.products || [];
     const totalPages = data.pages || 1;
