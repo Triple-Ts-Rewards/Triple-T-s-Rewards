@@ -228,7 +228,10 @@ function renderPagination(currentPage, totalPages, sponsorId, query, minPrice, m
     if (disabled) {
       btn.disabled = true;
     } else {
-      btn.onclick = () => loadProducts(sponsorId, query, minPrice, maxPrice, page);
+      btn.onclick = () => {
+        const productsUrl = document.getElementById("products_url")?.value;
+        loadProducts(sponsorId, productsUrl, query, minPrice, maxPrice, page);
+      };
     }
     return btn;
   };
