@@ -278,6 +278,8 @@
     <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" id="org_id" name="org_id" value="{{ org_id }}">
     <input type="hidden" id="current_sort" value="name_asc">
+    <input type="hidden" id="products_url" value="{{ url_for('rewards_bp.products', sponsor_id=org_id) }}">
+
 
     <form id="search-form">
       <div class="input-group">
