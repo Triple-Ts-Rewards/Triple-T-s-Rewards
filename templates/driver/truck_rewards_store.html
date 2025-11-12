@@ -320,11 +320,13 @@
   <script src="{{ url_for('static', filename='js/truck-rewards.js') }}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const orgId = document.getElementById('org_id').value;
-      if (typeof initializeStore === 'function') {
-        initializeStore(orgId);
+      const orgId = document.getElementById('org_id')?.value;
+      const productsUrl = document.getElementById('products_url')?.value;
+
+      if (typeof initializeStore === 'function' && orgId && productsUrl) {
+        initializeStore(orgId, productsUrl);
       } else {
-        console.error('Error: Store initialization function missing.');
+        console.error('Error: Missing org_id or products_url — cannot initialize store.');
       }
     });
   </script>
