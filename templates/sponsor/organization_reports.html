@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Organization Reports</h1>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Report</th>
+        <th>Description</th>
+        <th style="width: 1%;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Dropped Drivers</td>
+        <td>History of drivers removed from this organization by you or other sponsors.</td>
+        <td class="actions">
+          <a href="{{ url_for('sponsor_bp.dropped_drivers_report') }}" class="btn btn-outline">View</a>
+        </td>
+      </tr>
+
+      {# Future reports go here later #}
+      {# <tr> ... etc ... </tr> #}
+    </tbody>
+  </table>
+
+  <p>
+    <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline">
+      ← Back to Sponsor Dashboard
+    </a>
+  </p>
+{% endblock %}
