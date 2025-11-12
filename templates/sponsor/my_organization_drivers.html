@@ -76,6 +76,13 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-outline">Impersonate</button>
                     </form>
+                    <form method="POST"
+                        action="{{ url_for('sponsor_bp.drop_driver', driver_id=driver.user.USER_CODE) }}"
+                        style="display:inline;"
+                        onsubmit="return confirm('Remove {{ driver.user.USERNAME }} from your organization?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline" title="Drop this driver"> Drop Driver </button>     
+                    </form> 
                 </td>
             </tr>
             {% endfor %}

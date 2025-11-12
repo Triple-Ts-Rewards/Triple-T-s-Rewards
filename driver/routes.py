@@ -221,7 +221,6 @@ def change_password():
 
     return render_template('driver/update_info.html', user=current_user)
 
-# Driver Application
 @driver_bp.route("/driver_app", methods=["GET", "POST"])
 @login_required
 def apply_driver():
@@ -230,32 +229,46 @@ def apply_driver():
 
     if request.method == "POST":
         org_id = request.form["org_id"]
-        reason = request.form.get("reason", "")
-        
-        driver_profile = Driver.query.get(current_user.USER_CODE)
-        license_number = driver_profile.LICENSE_NUMBER if driver_profile else None
+        reason = request.form.get("reason", "").strip()
 
+        driver_profile = Driver.query.get(current_user.USER_CODE)
+        license_number = driver_profile.LICENSE_NUMBER if driver_profile else None  # fine to leave, even if unused
+
+        # Just grab any existing application for this org+driver
         existing = DriverApplication.query.filter_by(
             DRIVER_ID=current_user.USER_CODE,
             ORG_ID=org_id
         ).first()
 
+        # Case 1: already has a pending app → block
+        if existing and existing.STATUS == "Pending":
+            flash("You already have a pending application to this organization.", "warning")
+            return redirect(url_for("driver_bp.dashboard"))
+
+        # Case 2: previously Accepted / Rejected / Dropped → reuse that row as a new pending app
         if existing:
-            flash("You already applied to this organization.", "warning")
-        else:
-            application = DriverApplication(
-                DRIVER_ID=current_user.USER_CODE,
-                ORG_ID=org_id,
-                REASON=reason,
-                STATUS="Pending"
-            )
-            db.session.add(application)
+            existing.STATUS = "Pending"
+            existing.REASON = reason
+            # if your model has UPDATED_AT, you *can* set it here, but only if it exists:
+            # existing.UPDATED_AT = datetime.utcnow()
             db.session.commit()
-            flash("Application submitted successfully! Await sponsor review.", "success")
+            flash("Application resubmitted successfully! Await sponsor review.", "success")
+            return redirect(url_for("driver_bp.dashboard"))
+
+        # Case 3: no prior application → create fresh
+        application = DriverApplication(
+            DRIVER_ID=current_user.USER_CODE,
+            ORG_ID=org_id,
+            REASON=reason,
+            STATUS="Pending"
+        )
+        db.session.add(application)
+        db.session.commit()
+        flash("Application submitted successfully! Await sponsor review.", "success")
         return redirect(url_for("driver_bp.dashboard"))
 
+    # GET: show the form
     return render_template("driver/driver_app.html", organizations=organizations)
-
 # Address Management
 @driver_bp.route('/addresses')
 @role_required(Role.DRIVER, allow_admin=True)

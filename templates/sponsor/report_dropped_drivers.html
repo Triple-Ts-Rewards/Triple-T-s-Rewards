@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Dropped Drivers – Organization {{ org_id }}</h1>
+
+  {% if rows|length == 0 %}
+    <p class="muted">No drivers have been dropped from this organization yet.</p>
+  {% else %}
+    <table>
+      <thead>
+        <tr>
+          <th>Time (UTC)</th>
+          <th>Driver</th>
+          <th>Sponsor</th>
+          <th>Raw Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>{{ r.log.CREATED_AT.strftime('%Y-%m-%d %H:%M:%S') if r.log.CREATED_AT else '' }}</td>
+            <td>
+              {% if r.driver %}
+                {{ r.driver.USERNAME }} ({{ r.driver.FNAME }} {{ r.driver.LNAME }})
+              {% else %}
+                Unknown (id in log)
+              {% endif %}
+            </td>
+            <td>
+              {% if r.sponsor %}
+                {{ r.sponsor.USERNAME }}
+              {% else %}
+                Unknown
+              {% endif %}
+            </td>
+            <td><code>{{ r.log.DETAILS or "" }}</code></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  <p style="margin-top:1rem;">
+    <a href="{{ url_for('sponsor_bp.organization_reports_menu') }}" class="btn btn-outline">
+      ← Back to Organization Reports
+    </a>
+  </p>
+{% endblock %}
