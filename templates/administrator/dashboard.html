@@ -1,14 +1,83 @@
 {% extends "base.html" %}
+
 {% block content %}
-  <div class="app-header-row">
-    <h1 style="margin:0;">Administrator Dashboard</h1>
+
+<div class="app-main-section">
+  <!-- Page Title -->
+  <div class="page-header" style="margin-bottom: 2rem;">
+      <h1>Admin Dashboard</h1>
   </div>
-  <p><a href="{{ url_for('administrator_bp.accounts') }}" class="btn btn-dash">Manage Active Users</a></p>
-  <p><a href="{{ url_for('administrator_bp.disabled_accounts') }}" class="btn btn-dash">Manage Inactive Users</a></p>
-  <p><a href="{{ url_for('administrator_bp.add_user') }}" class="btn btn-dash">Add a New User</a></p>
-  <p><a href="{{ url_for('administrator_bp.review_sponsors') }}" class="btn btn-dash">Review Sponsor - Organization Applications</a></p>
-  <p><a href="{{ url_for('administrator_bp.audit_menu') }}" class="btn btn-dash">View Audit Logs</a></p>
-  <p><a href="{{ url_for('administrator_bp.timeout_users') }}" class="btn btn-dash">Timeout Users</a></p>
-  <p><a href="{{ url_for('administrator_bp.locked_users') }}" class="btn btn-dash">Unlock accounts</a></p>
-  <p><a href="{{ url_for('bulk_loading_bp.admin_bulk_loading') }}" class="btn btn-dash">Bulk Load Users</a></p>
+
+  <!-- ================= User Management ================= -->
+  <div class="card-elevated" style="margin-bottom: 2rem;">
+      <div class="card-header-accent">
+          <h2>User Management</h2>
+      </div>
+
+      <div class="org-card-body">
+          <div class="dashboard-actions" style="display: flex; flex-direction: column; gap: 1rem;">
+
+              <a href="{{ url_for('administrator_bp.accounts') }}" class="btn-dash">
+                  Manage Active Users
+              </a>
+
+              <a href="{{ url_for('administrator_bp.disabled_accounts') }}" class="btn-dash">
+                  Manage Inactive Users
+              </a>
+
+              <a href="{{ url_for('administrator_bp.add_user') }}" class="btn-dash">
+                  Add a New User
+              </a>
+
+              <a href="{{ url_for('administrator_bp.timeout_users') }}" class="btn-dash">
+                  Timeout Users
+              </a>
+
+              <a href="{{ url_for('administrator_bp.locked_users') }}" class="btn-dash">
+                  Unlock Accounts
+              </a>
+
+          </div>
+      </div>
+  </div>
+
+  <!-- ================= Sponsor / Organization Management ================= -->
+  <div class="card-elevated" style="margin-bottom: 2rem;">
+      <div class="card-header-accent">
+          <h2>Sponsor & Organization Management</h2>
+      </div>
+
+      <div class="org-card-body">
+          <div class="dashboard-actions" style="display: flex; flex-direction: column; gap: 1rem;">
+
+              <a href="{{ url_for('administrator_bp.review_sponsors') }}" class="btn-dash">
+                  Review Sponsor / Organization Applications
+              </a>
+
+              <a href="{{ url_for('bulk_loading_bp.admin_bulk_loading') }}" class="btn-dash">
+                  Bulk Load Users
+              </a>
+
+          </div>
+      </div>
+  </div>
+
+  <!-- ================= System Tools & Insights ================= -->
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>System Tools & Insights</h2>
+      </div>
+
+      <div class="org-card-body">
+          <div class="dashboard-actions" style="display: flex; flex-direction: column; gap: 1rem;">
+
+              <a href="{{ url_for('administrator_bp.audit_menu') }}" class="btn-dash">
+                  View Audit Logs
+              </a>
+
+          </div>
+      </div>
+  </div>
+
+</div>
 {% endblock %}

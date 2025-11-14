@@ -3,51 +3,87 @@
 {% block title %}Driver Dashboard{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Driver Dashboard for {{ current_user.USERNAME }}</h2>
+<div class="app-main-section">
 
-    <div class="box" style="margin-bottom: 2rem; padding: 1.5rem; border: 1px solid #ddd; border-radius: 5px;">
-        <h3>Your Total Points Balance</h3>
-        {# Use the total_points variable passed from the backend #}
-        <p style="font-size: 2rem; font-weight: bold;">{{ total_points if total_points is defined else 'N/A' }}</p>
-        <p class="text-muted">This is the sum of points from all your sponsor organizations.</p>
-    </div>
+  <!-- Card: Total Points -->
+  <div class="card-elevated" style="margin-bottom: 2rem;">
+      <div class="card-header-accent">
+          <h2>Welcome, {{ current_user.USERNAME }}</h2>
+      </div>
+      <div class="org-card-body">
+          <h3>Your Total Points Balance</h3>
+          <p style="font-size: 2.2rem; font-weight: 700; margin: 0;">
+            {{ total_points if total_points is defined else 'N/A' }}
+          </p>
+          <p class="text-muted" style="margin-top: 0.5rem;">Sum of points from all sponsor organizations.</p>
+      </div>
+  </div>
 
-    {# Section for Sponsor Stores #}
-    <div class="card mb-4">
-        <div class="card-header">
-            Your Sponsor Stores
-        </div>
-        <div class="card-body">
-            {% if associations %}
-                <p>Click on a sponsor to view their rewards store and your point balance with them.</p>
-                <ul class="list-group">
-                    {% for assoc in associations %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <a href="{{ url_for('driver_bp.truck_rewards_store', org_id=assoc.ORG_ID) }}">
-                                {{ assoc.organization.ORG_NAME }}
-                            </a>
-                            <span class="badge bg-primary rounded-pill">{{ assoc.points }} points</span>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p>You are not yet a member of any sponsor organizations.</p>
-            {% endif %}
-        </div>
-    </div>
+  <!-- Card: Sponsor Stores -->
+  <div class="card-elevated" style="margin-bottom: 2rem;">
+      <div class="card-header-accent">
+          <h2>Your Sponsor Stores</h2>
+      </div>
+      <div class="org-card-body">
+          {% if associations %}
+              <p>Choose a sponsor to view rewards and balance.</p>
+              <ul class="list-group" style="padding-left: 0; margin-top: 1rem;">
+                  {% for assoc in associations %}
+                      <li class="list-group-item"
+                          style="display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 0.75rem; padding: 0.75rem 1rem;">
+                          
+                          <a href="{{ url_for('driver_bp.truck_rewards_store', org_id=assoc.ORG_ID) }}"
+                             style="font-weight: 600; color: var(--link-color);">
+                              {{ assoc.organization.ORG_NAME }}
+                          </a>
 
-    {# ** THIS IS THE FIX ** #}
-    {# The "Quick Actions" are now styled as large buttons, like the sponsor dashboard #}
-    <div class="dashboard-links">
-        <h3>Quick Actions</h3>
-        <p><a href="{{ url_for('driver_bp.point_history') }}" class="btn btn-dash">View Point History</a></p>
-        <p><a href="{{ url_for('driver_bp.addresses') }}" class="btn btn-dash">Manage Shipping Addresses</a></p>
-        <p><a href="{{ url_for('driver_bp.sponsor_info_select') }}" class="btn btn-dash">Sponsor Information</a></p>
-        <p><a href="{{ url_for('driver_bp.apply_driver') }}" class="btn btn-dash">Apply to a New Sponsor</a></p>
-         <p><a href="{{ url_for('driver_bp.update_contact') }}" class="btn btn-dash">Edit Account Information</a></p>
-        <p><a href="{{ url_for('auth.settings') }}" class="btn btn-dash">My Settings</a></p>
-    </div>
+                          <span class="badge-accent badge-small">
+                              {{ assoc.points }} points
+                          </span>
+                      </li>
+                  {% endfor %}
+              </ul>
+          {% else %}
+              <p class="text-muted">You are not linked to any sponsor organizations.</p>
+          {% endif %}
+      </div>
+  </div>
+
+  <!-- Card: Quick Actions -->
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Quick Actions</h2>
+      </div>
+      <div class="org-card-body">
+
+          <div class="dashboard-actions" style="display: flex; flex-direction: column; gap: 1rem;">
+              <a href="{{ url_for('driver_bp.point_history') }}" class="btn-dash">
+                  View Point History
+              </a>
+
+              <a href="{{ url_for('driver_bp.addresses') }}" class="btn-dash">
+                  Manage Shipping Addresses
+              </a>
+
+              <a href="{{ url_for('driver_bp.sponsor_info_select') }}" class="btn-dash">
+                  Sponsor Information
+              </a>
+
+              <a href="{{ url_for('driver_bp.apply_driver') }}" class="btn-dash">
+                  Apply to a New Sponsor
+              </a>
+
+              <a href="{{ url_for('driver_bp.update_contact') }}" class="btn-dash">
+                  Edit Account Information
+              </a>
+
+              <a href="{{ url_for('auth.settings') }}" class="btn-dash">
+                  My Settings
+              </a>
+          </div>
+
+      </div>
+  </div>
 
 </div>
 {% endblock %}
