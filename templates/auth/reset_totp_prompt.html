@@ -1,10 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
-  <h2>Verify your identity</h2>
-  <p>Enter the 6-digit code from your authenticator app to continue.</p>
-  <form method="post" action="{{ url_for('auth.reset_totp_verify') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input name="token" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
-    <button class="btn" type="submit">Verify</button>
-    </form>
+  <div class="page-header">
+    <h1>Verify Your Identity</h1>
+    <p class="text-muted" style="margin:0;">Enter the 6-digit code from your authenticator app to continue.</p>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Authenticator Challenge</h2>
+    </div>
+    <div class="org-card-body">
+      <form method="post" action="{{ url_for('auth.reset_totp_verify') }}" style="display:grid; gap:1rem; max-width:360px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label for="token">Code</label>
+          <input id="token" name="token" class="input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+        </div>
+        <button class="btn btn-primary" type="submit">Verify</button>
+      </form>
+    </div>
+  </div>
 {% endblock %}

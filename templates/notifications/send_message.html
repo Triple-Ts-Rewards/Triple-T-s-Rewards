@@ -1,55 +1,77 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Send Message</h2>
-
-{# GET form just to change the role filter #}
-<form method="get" action="{{ url_for('notification_bp.send_message') }}" id="roleForm"
-      style="margin:.5rem 0 1rem;">
-  <label>Send to:
-    <select name="role" onchange="this.form.submit()">
-      <option value="all"           {{ 'selected' if role=='all' }}>All users</option>
-      <option value="driver"        {{ 'selected' if role=='driver' }}>Drivers</option>
-      <option value="sponsor"       {{ 'selected' if role=='sponsor' }}>Sponsors</option>
-      <option value="administrator" {{ 'selected' if role=='administrator' }}>Administrators</option>
-    </select>
-  </label>
-</form>
-
-{# POST form to actually send the message #}
-<form method="post" action="{{ url_for('notification_bp.send_message') }}">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <input type="hidden" name="role" value="{{ role }}">
-
-  <label><input type="checkbox" name="send_all" id="send_all"> Send to everyone</label>
-
-  <div id="pick-recipients" style="max-height:260px; overflow:auto; border:1px solid var(--border); padding:.5rem; border-radius:.5rem;">
-    {% for u in users %}
-      <label style="display:block; padding:.15rem 0;">
-        <input type="checkbox" name="recipients" value="{{ u.USER_CODE }}">
-        {{ u.USERNAME }}
-        <small style="opacity:.6;">({{ u.USER_TYPE.name if u.USER_TYPE else '' }})</small>
-      </label>
-    {% else %}
-      <em>No users in this group.</em>
-    {% endfor %}
+  <div class="page-header">
+    <h1>Send Message</h1>
+    <p class="text-muted" style="margin:0;">Target a role, pick recipients, and send an announcement.</p>
   </div>
 
-  <div style="margin-top:1rem;">
-    <textarea name="message" rows="3" required style="width:100%;"></textarea>
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Audience</h2>
+    </div>
+    <div class="org-card-body">
+      <form method="get" action="{{ url_for('notification_bp.send_message') }}" id="roleForm" class="dashboard-actions" style="max-width:320px;">
+        <label style="width:100%;">
+          <span class="text-muted" style="display:block; margin-bottom:.35rem;">Send to</span>
+          <select name="role" onchange="this.form.submit()" class="input">
+            <option value="all"           {{ 'selected' if role=='all' }}>All users</option>
+            <option value="driver"        {{ 'selected' if role=='driver' }}>Drivers</option>
+            <option value="sponsor"       {{ 'selected' if role=='sponsor' }}>Sponsors</option>
+            <option value="administrator" {{ 'selected' if role=='administrator' }}>Administrators</option>
+          </select>
+        </label>
+      </form>
+    </div>
   </div>
 
-  <button type="submit" class="btn btn-primary" style="margin-top:.75rem;">Send</button>
-</form>
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Compose Message</h2>
+    </div>
+    <div class="org-card-body">
+      <form method="post" action="{{ url_for('notification_bp.send_message') }}" style="display:grid; gap:1rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="role" value="{{ role }}">
 
-<script>
-  const sendAll = document.getElementById("send_all");
-  const pick = document.getElementById("pick-recipients");
-  function togglePick() {
-    const boxes = pick.querySelectorAll("input[type=checkbox]");
-    pick.style.opacity = sendAll.checked ? 0.5 : 1;
-    boxes.forEach(b => b.disabled = sendAll.checked);
-  }
-  if (sendAll) { sendAll.addEventListener("change", togglePick); togglePick(); }
-</script>
+        <label class="checkbox">
+          <input type="checkbox" name="send_all" id="send_all"> Send to everyone in this role
+        </label>
 
+        <div id="pick-recipients" class="card-elevated" style="padding:1rem; max-height:280px; overflow:auto; box-shadow:none;">
+          {% for u in users %}
+            <label style="display:flex; justify-content:space-between; padding:.25rem 0; gap:0.5rem;">
+              <span>
+                <input type="checkbox" name="recipients" value="{{ u.USER_CODE }}">
+                {{ u.USERNAME }}
+              </span>
+              <small class="text-muted">{{ u.USER_TYPE.name if u.USER_TYPE else '' }}</small>
+            </label>
+          {% else %}
+            <em>No users in this group.</em>
+          {% endfor %}
+        </div>
+
+        <div>
+          <label for="message">Message</label>
+          <textarea id="message" name="message" rows="4" class="input" required placeholder="Share an update"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="justify-self:flex-start;">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const sendAll = document.getElementById("send_all");
+    const pick = document.getElementById("pick-recipients");
+    function togglePick() {
+      const boxes = pick.querySelectorAll("input[type=checkbox]");
+      pick.style.opacity = sendAll.checked ? 0.5 : 1;
+      boxes.forEach(b => b.disabled = sendAll.checked);
+    }
+    if (sendAll && pick) {
+      sendAll.addEventListener("change", togglePick);
+      togglePick();
+    }
+  </script>
 {% endblock %}

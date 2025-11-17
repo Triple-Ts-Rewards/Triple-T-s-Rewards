@@ -1,54 +1,62 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="settings-section">
-  <h2>Two-Factor Authentication (2FA)</h2>
-  <p>You can secure your account with one or both of the following:</p>
+  <div class="page-header">
+    <h1>Two-Factor Settings</h1>
+    <p class="text-muted" style="margin:0;">Secure your account with one or both login verifications.</p>
+  </div>
 
-  <div class="twofa-options">
-    <!-- 🔹 Authenticator App (TOTP) -->
-    <div class="twofa-option">
-      <h3>Authenticator App (TOTP)</h3>
-      {% if current_user.TOTP_SECRET %}
-        <p><strong>Status:</strong> Enabled ✅</p>
-        <form method="post" action="{{ url_for('auth.disable_totp') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-outline-danger" type="submit">Disable TOTP</button>
-        </form>
-      {% else %}
-        <p>Protect your account using an authenticator app like Google Authenticator or DUO.</p>
-        <a class="btn btn-primary" href="{{ url_for('auth.twofa_setup') }}">Set up Authenticator App</a>
-      {% endif %}
-    </div> <br>
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Available Methods</h2>
+    </div>
+    <div class="org-card-body" style="display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(280px,1fr));">
+      <div class="card-elevated" style="padding:1.5rem; box-shadow:none; border:1px solid var(--border);">
+        <h3>Authenticator App (TOTP)</h3>
+        {% if current_user.TOTP_SECRET %}
+          <p><strong>Status:</strong> Enabled ✅</p>
+          <form method="post" action="{{ url_for('auth.disable_totp') }}" style="margin-top:1rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-outline" type="submit">Disable TOTP</button>
+          </form>
+        {% else %}
+          <p>Protect your account using an authenticator app like Google Authenticator or Duo.</p>
+          <a class="btn btn-primary" href="{{ url_for('auth.twofa_setup') }}">Set Up Authenticator App</a>
+        {% endif %}
+      </div>
 
-    <!-- 🔹 Email Verification -->
-    <div class="twofa-option">
-      <h3>Email Verification</h3>
-      {% if current_user.EMAIL_2FA_ENABLED %}
-        <p><strong>Status:</strong> Enabled ✅</p>
-        <form method="post" action="{{ url_for('auth.email_2fa_disable') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-outline-danger" type="submit">Disable Email 2FA</button>
-        </form>
+      <div class="card-elevated" style="padding:1.5rem; box-shadow:none; border:1px solid var(--border);">
+        <h3>Email Verification</h3>
+        {% if current_user.EMAIL_2FA_ENABLED %}
+          <p><strong>Status:</strong> Enabled ✅</p>
+          <form method="post" action="{{ url_for('auth.email_2fa_disable') }}" style="margin-top:1rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-outline" type="submit">Disable Email 2FA</button>
+          </form>
+        {% else %}
+          <p>Receive a one-time code in your inbox whenever you sign in.</p>
+          <form method="post" action="{{ url_for('auth.email_2fa_enable') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-primary" type="submit">Enable Email 2FA</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card-elevated" style="margin-top:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Navigation</h2>
+    </div>
+    <div class="org-card-body" style="text-align:center;">
+      {% if current_user.USER_TYPE == 'admin' %}
+        <a class="btn btn-outline" href="{{ url_for('administrator_bp.dashboard') }}">← Back to Admin Dashboard</a>
+      {% elif current_user.USER_TYPE == 'sponsor' %}
+        <a class="btn btn-outline" href="{{ url_for('sponsor_bp.dashboard') }}">← Back to Sponsor Dashboard</a>
+      {% elif current_user.USER_TYPE == 'driver' %}
+        <a class="btn btn-outline" href="{{ url_for('driver_bp.dashboard') }}">← Back to Driver Dashboard</a>
       {% else %}
-        <p>Enable email-based verification to receive login codes via your email.</p>
-        <form method="post" action="{{ url_for('auth.email_2fa_enable') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-primary" type="submit">Enable Email 2FA</button>
-        </form>
+        <a class="btn btn-outline" href="{{ url_for('common.index') }}">← Back to Home</a>
       {% endif %}
     </div>
   </div>
-</section>
-
-<p style="margin-top: 1.5rem; text-align: center;">
-  {% if current_user.USER_TYPE == 'admin' %}
-    <a class="btn btn-outline" href="{{ url_for('administrator_bp.dashboard') }}">← Back to Admin Dashboard</a>
-  {% elif current_user.USER_TYPE == 'sponsor' %}
-    <a class="btn btn-outline" href="{{ url_for('sponsor_bp.dashboard') }}">← Back to Sponsor Dashboard</a>
-  {% elif current_user.USER_TYPE == 'driver' %}
-    <a class="btn btn-outline" href="{{ url_for('driver_bp.dashboard') }}">← Back to Driver Dashboard</a>
-  {% else %}
-    <a class="btn btn-outline" href="{{ url_for('common.index') }}">← Back to Home</a>
-  {% endif %}
-</p>
 {% endblock %}

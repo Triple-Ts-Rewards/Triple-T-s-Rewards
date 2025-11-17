@@ -48,19 +48,21 @@
           {% include 'partials/sidebar.html' %}
       {% endif %}
 
-      <main class="app-main-content">
+        <main class="app-main-content">
           <div class="container">
+            <section class="app-main-section">
               {% with messages = get_flashed_messages(with_categories=true) %}
-                  {% if messages %}
-                      {% for category, message in messages %}
-                          <div class="flash-messages {{ category }}">{{ message }}</div>
-                      {% endfor %}
-                  {% endif %}
+                {% if messages %}
+                  {% for category, message in messages %}
+                    <div class="flash-messages {{ category }}">{{ message }}</div>
+                  {% endfor %}
+                {% endif %}
               {% endwith %}
-              
+                  
               {% block content %}{% endblock %}
+            </section>
           </div>
-      </main>
+        </main>
   </div>
 
   {% include "partials/footer.html" %}

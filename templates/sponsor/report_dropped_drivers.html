@@ -1,47 +1,66 @@
 {% extends "base.html" %}
 {% block content %}
-  <h1>Dropped Drivers – Organization {{ org_id }}</h1>
+  <div class="page-header">
+    <h1>Dropped Drivers</h1>
+    <p class="text-muted" style="margin:0;">Organization {{ org_id }} audit history.</p>
+  </div>
 
   {% if rows|length == 0 %}
-    <p class="muted">No drivers have been dropped from this organization yet.</p>
+    <div class="empty-state">
+      <div class="empty-state-icon">📘</div>
+      <p class="empty-state-heading">No drivers have been dropped from this organization yet.</p>
+      <a href="{{ url_for('sponsor_bp.organization_reports_menu') }}" class="btn btn-primary">View Other Reports</a>
+    </div>
   {% else %}
-    <table>
-      <thead>
-        <tr>
-          <th>Time (UTC)</th>
-          <th>Driver</th>
-          <th>Sponsor</th>
-          <th>Raw Details</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in rows %}
-          <tr>
-            <td>{{ r.log.CREATED_AT.strftime('%Y-%m-%d %H:%M:%S') if r.log.CREATED_AT else '' }}</td>
-            <td>
-              {% if r.driver %}
-                {{ r.driver.USERNAME }} ({{ r.driver.FNAME }} {{ r.driver.LNAME }})
-              {% else %}
-                Unknown (id in log)
-              {% endif %}
-            </td>
-            <td>
-              {% if r.sponsor %}
-                {{ r.sponsor.USERNAME }}
-              {% else %}
-                Unknown
-              {% endif %}
-            </td>
-            <td><code>{{ r.log.DETAILS or "" }}</code></td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="card-elevated">
+      <div class="card-header-accent">
+        <h2>Audit Trail</h2>
+      </div>
+      <div class="org-card-body">
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Time (UTC)</th>
+                <th>Driver</th>
+                <th>Sponsor</th>
+                <th>Raw Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td>{{ r.log.CREATED_AT.strftime('%Y-%m-%d %H:%M:%S') if r.log.CREATED_AT else '' }}</td>
+                  <td>
+                    {% if r.driver %}
+                      {{ r.driver.USERNAME }} ({{ r.driver.FNAME }} {{ r.driver.LNAME }})
+                    {% else %}
+                      Unknown (id in log)
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if r.sponsor %}
+                      {{ r.sponsor.USERNAME }}
+                    {% else %}
+                      Unknown
+                    {% endif %}
+                  </td>
+                  <td><code>{{ r.log.DETAILS or "" }}</code></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   {% endif %}
 
-  <p style="margin-top:1rem;">
-    <a href="{{ url_for('sponsor_bp.organization_reports_menu') }}" class="btn btn-outline">
-      ← Back to Organization Reports
-    </a>
-  </p>
+  <div class="card-elevated" style="margin-top:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Navigation</h2>
+    </div>
+    <div class="org-card-body" style="text-align:center;">
+      <a href="{{ url_for('sponsor_bp.organization_reports_menu') }}" class="btn btn-outline">← Back to Organization Reports</a>
+    </div>
+  </div>
 {% endblock %}

@@ -399,6 +399,44 @@ input:checked + .slider::before {
    
    .container { max-width: 1200px; margin: 0 auto; }
 
+   .app-main-section {
+     display: flex;
+     flex-direction: column;
+     gap: 1.75rem;
+     padding: 1.25rem 0 3rem;
+     width: 100%;
+   }
+
+   .app-main-section > * {
+     margin: 0;
+   }
+
+   @media (min-width: 768px) {
+     .app-main-section {
+       gap: 2rem;
+       padding: 2rem 0 3.5rem;
+     }
+   }
+
+   .dashboard-actions {
+     display: flex;
+     flex-direction: column;
+     gap: 1rem;
+     width: 100%;
+   }
+
+   @media (min-width: 768px) {
+     .dashboard-actions {
+       flex-direction: row;
+       flex-wrap: wrap;
+     }
+
+     .dashboard-actions .btn-dash {
+       flex: 1 1 260px;
+       justify-content: center;
+     }
+   }
+
    .centered-content {
     text-align: center;
     
@@ -1473,6 +1511,53 @@ body:not(.has-sidebar) .apply-form {
   display: inline-block;
   min-width: 90px;
   text-align: center;
+}
+
+.badge-preview-base {
+  background: var(--brand);
+  color: #fff !important;
+}
+
+.badge-preview-award {
+  background-color: #28a745 !important;
+  color: #fff !important;
+}
+
+.badge-preview-remove {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+}
+
+.metric-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  min-width: 220px;
+}
+
+.metric-card i {
+  font-size: 1.75rem;
+  color: var(--brand-accent);
+}
+
+.metric-label {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.metric-value {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* === Outline Badge for Account Type (C‑3 Modern Hybrid Chip) === */

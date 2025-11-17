@@ -3,21 +3,59 @@
 {% block title %}Home - TRIPLE T's Trucking Rewards{% endblock %}
 
 {% block content %}
-<div class="homepage">
-  <h1>Welcome to <span class="accent-text">TRIPLE T's Trucking Rewards</span></h1>
-  <p class="tagline">Recognizing hard work. Rewarding excellence.</p>
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Triple T's Trucking</p>
+      <h1>Recognizing hard work, rewarding excellence</h1>
+      <p class="text-muted">Your centralized hub for tracking points, requesting rewards, and celebrating milestones.</p>
+    </div>
+    <div class="dashboard-actions" style="gap:0.75rem;">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Log In</a>
+      <a href="{{ url_for('auth.signup_page') }}" class="btn btn-outline">Sign Up</a>
+    </div>
+  </div>
 
-  <p class="lead">Log in to access your account and start earning your rewards today.</p>
-  <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
+  <div class="card-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.5rem;">
+    <div class="card-elevated">
+      <div class="card-header-accent">
+        <h2>Drivers</h2>
+      </div>
+      <div class="org-card-body">
+        <p>Log your deliveries, view your points, and redeem rewards designed for life on the road.</p>
+        <a href="{{ url_for('driver_bp.dashboard') }}" class="btn btn-link">Explore driver tools →</a>
+      </div>
+    </div>
 
-    <p class="text-sm text-gray-400">
-      Don't have an account yet? 
-      <a href="{{ url_for('auth.signup_page')}}" id="signup-link" class="text-green-400 hover:text-green-300 font-semibold transition duration-200">Sign up</a>
-    </p>
+    <div class="card-elevated">
+      <div class="card-header-accent">
+        <h2>Sponsors</h2>
+      </div>
+      <div class="org-card-body">
+        <p>Recognize top performers, drop personal notes, and view progress across your teams.</p>
+        <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-link">Manage sponsorships →</a>
+      </div>
+    </div>
 
-  <hr class="divider">
+    <div class="card-elevated">
+      <div class="card-header-accent">
+        <h2>Administrators</h2>
+      </div>
+      <div class="org-card-body">
+        <p>Audit activity, approve applications, and keep the reward engine humming.</p>
+        <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-link">Go to admin panel →</a>
+      </div>
+    </div>
+  </div>
 
-  <p class="lead">New to Triple T’s? Learn more about how we reward our drivers and partners.</p>
-  <a href="{{ url_for('about_bp.view_about') }}" class="btn btn-outline">Read Our About Page</a>
-</div>
+  <div class="card-elevated" style="margin-top:2rem;">
+    <div class="card-header-accent">
+      <h2>New to Triple T’s?</h2>
+    </div>
+    <div class="org-card-body" style="display:flex; align-items:center; justify-content:space-between; gap:1.5rem; flex-wrap:wrap;">
+      <div>
+        <p class="text-muted">Learn more about how the program works, who's involved, and what's coming next.</p>
+      </div>
+      <a href="{{ url_for('about_bp.view_about') }}" class="btn btn-outline">Read the About Page</a>
+    </div>
+  </div>
 {% endblock %}

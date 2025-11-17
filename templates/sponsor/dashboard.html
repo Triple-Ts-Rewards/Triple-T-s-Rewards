@@ -1,28 +1,57 @@
 {% extends "base.html" %}
+
 {% block content %}
-  <main class="app-main-content container">
-    {% if organization %}
-    <h3 class="text-muted mb-4">
-        <i class="fa-solid fa-building"></i> 
-        {{ organization.ORG_NAME }}
-    </h3>
-{% else %}
-    <h3 class="text-muted mb-4">No organization assigned</h3>
-{% endif %}
 
-    <div class="dashboard-links">
-      <p><a href="{{ url_for('sponsor_bp.manage_points_page') }}" class="btn btn-dash">Award / Remove Points</a></p>
-      <p><a href="{{ url_for('sponsor_bp.driver_management') }}" class="btn btn-dash">Driver Management</a></p>
-      <p><a href="{{ url_for('sponsor_bp.review_driver_applications') }}" class="btn btn-dash">Review Applications</a></p>
-      <p><a href="{{ url_for('sponsor_bp.apply_for_organization') }}" class="btn btn-dash">Apply for Organization</a></p>
-      <p><a href="{{ url_for('sponsor_bp.update_settings') }}" class="btn btn-dash">Store Settings</a></p>
-      <p><a href="{{ url_for('sponsor_bp.list_sponsor_users') }}" class="btn btn-dash">Sponsor Accounts</a></p>
-      <p><a href="{{ url_for('bulk_loading_bp.sponsor_bulk_loading') }}" class="btn btn-dash">Bulk Load Users</a></p>
-      <p><a href="{{ url_for('sponsor_bp.update_info') }}" class="btn btn-dash">Edit Account Info</a></p>
-      <p><a href="{{ url_for('sponsor_bp.organization_reports_menu') }}" class="btn btn-dash">Organization Reports</a></p>
+  <div class="page-header">
+    <h1>Sponsor Dashboard</h1>
+    <p class="text-muted" style="margin: 0;">
+    Manage your organization, drivers, and storefront in one place.
+    </p>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Organization Overview</h2>
     </div>
+    <div class="org-card-body">
+      {% if organization %}
+        <p style="font-size: 1.3rem; font-weight: 600; margin-bottom: 0.25rem;">
+          {{ organization.ORG_NAME }}
+        </p>
+        <p class="text-muted" style="margin: 0;">{{ organization.ADDRESS1 or '' }}</p>
+      {% else %}
+        <p class="text-muted" style="margin: 0;">No organization assigned.</p>
+      {% endif %}
+    </div>
+  </div>
 
-    <div class="spacer"></div>
-    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline">Logout</a>
-  </main>
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Quick Actions</h2>
+    </div>
+    <div class="org-card-body">
+      <div class="dashboard-actions">
+        <a href="{{ url_for('sponsor_bp.manage_points_page') }}" class="btn-dash">Award / Remove Points</a>
+        <a href="{{ url_for('sponsor_bp.driver_management') }}" class="btn-dash">Driver Management</a>
+        <a href="{{ url_for('sponsor_bp.review_driver_applications') }}" class="btn-dash">Review Applications</a>
+        <a href="{{ url_for('sponsor_bp.apply_for_organization') }}" class="btn-dash">Apply for Organization</a>
+        <a href="{{ url_for('sponsor_bp.update_settings') }}" class="btn-dash">Store Settings</a>
+        <a href="{{ url_for('sponsor_bp.list_sponsor_users') }}" class="btn-dash">Sponsor Accounts</a>
+        <a href="{{ url_for('bulk_loading_bp.sponsor_bulk_loading') }}" class="btn-dash">Bulk Load Users</a>
+        <a href="{{ url_for('sponsor_bp.update_info') }}" class="btn-dash">Edit Account Info</a>
+        <a href="{{ url_for('sponsor_bp.organization_reports_menu') }}" class="btn-dash">Organization Reports</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Sign Out</h2>
+    </div>
+    <div class="org-card-body">
+      <p class="text-muted" style="margin-bottom: 1rem;">Finished for now? Sign out securely.</p>
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-outline">Logout</a>
+    </div>
+  </div>
+
 {% endblock %}

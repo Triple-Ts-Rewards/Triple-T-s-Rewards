@@ -1,32 +1,45 @@
 {% extends "base.html" %}
+
 {% block content %}
-  <h1>Organization Reports</h1>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Report</th>
-        <th>Description</th>
-        <th style="width: 1%;">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Dropped Drivers</td>
-        <td>History of drivers removed from this organization by you or other sponsors.</td>
-        <td class="actions">
-          <a href="{{ url_for('sponsor_bp.dropped_drivers_report') }}" class="btn btn-outline">View</a>
-        </td>
-      </tr>
+  <div class="page-header">
+      <h1>Organization Reports</h1>
+      <p class="text-muted" style="margin: 0;">Insights and historical data for your sponsor account.</p>
+  </div>
 
-      {# Future reports go here later #}
-      {# <tr> ... etc ... </tr> #}
-    </tbody>
-  </table>
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Available Reports</h2>
+      </div>
+      <div class="org-card-body">
+          <table>
+            <thead>
+              <tr>
+                <th>Report</th>
+                <th>Description</th>
+                <th style="width: 1%;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Dropped Drivers</td>
+                <td>History of drivers removed from this organization by you or other sponsors.</td>
+                <td>
+                  <a href="{{ url_for('sponsor_bp.dropped_drivers_report') }}" class="btn btn-outline">View</a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+      </div>
+  </div>
 
-  <p>
-    <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline">
-      ← Back to Sponsor Dashboard
-    </a>
-  </p>
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Navigation</h2>
+      </div>
+      <div class="org-card-body">
+          <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline">← Back to Sponsor Dashboard</a>
+      </div>
+  </div>
+
 {% endblock %}

@@ -1,18 +1,36 @@
 {% extends "base.html" %}
+
 {% block content %}
-<h1>Create Sponsor User</h1>
 
-<form method="POST" style="max-width: 420px;">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="page-header">
+    <h1>Create Sponsor User</h1>
+    <p class="text-muted" style="margin: 0;">Generate an additional sponsor account for your organization.</p>
+  </div>
 
-  <label>Username</label>
-  <input name="username" required class="input" placeholder="new_sponsor_username">
+  <div class="card-elevated" style="max-width: 520px;">
+    <div class="card-header-accent">
+      <h2>Account Details</h2>
+    </div>
 
-  <p class="muted" style="margin:.5rem 0 1rem;">
-    Role is fixed to <strong>SPONSOR</strong> for this form.
-  </p>
+    <div class="org-card-body">
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-  <button class="btn" type="submit">Create</button>
-  <a class="btn" href="{{ url_for('sponsor_bp.list_sponsor_users') }}">View Sponsor Users</a>
-</form>
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input id="username" name="username" required placeholder="new_sponsor_username">
+        </div>
+
+        <p class="text-muted" style="margin: 0 0 1rem;">
+          Role is fixed to <strong>SPONSOR</strong> for this form.
+        </p>
+
+        <div class="dashboard-actions">
+          <button class="btn btn-primary" type="submit">Create</button>
+          <a class="btn btn-outline" href="{{ url_for('sponsor_bp.list_sponsor_users') }}">View Sponsor Users</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
 {% endblock %}
