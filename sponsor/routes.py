@@ -6,7 +6,7 @@ from common.logging import log_audit_event, DRIVER_POINTS, DRIVER_DROPPED, log_d
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from extensions import db
-from models import AuditLog, User, Role, StoreSettings, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization
+from models import AuditLog, User, Role, StoreSettings, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization, PointRequest
 from extensions import db, bcrypt
 import secrets
 import string
@@ -45,6 +45,8 @@ def organization_reports():
 def apply_for_organization():
     # Get the current sponsor record
     sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+
+    available_orgs = Organization.query.filter(Organization.STATUS != 'Rejected').order_by(Organization.ORG_NAME).all()
     
     if request.method == 'POST':
         org_name = request.form.get('org_name', '').strip()
@@ -96,7 +98,7 @@ def apply_for_organization():
         return redirect(url_for('sponsor_bp.apply_for_organization'))
     
     # GET request - render the form
-    return render_template("sponsor/apply_for_organization.html", sponsor=sponsor)
+    return render_template("sponsor/apply_for_organization.html", sponsor=sponsor, available_orgs=available_orgs)
 
 
 def driver_query_for_sponsor(organization_id):
@@ -525,8 +527,6 @@ def driver_management():
     print(f"✅ Final sorted driver list ({sort_by}): {[d['user'].USERNAME for d in driver_data]}")
     print("===========================================\n")
 
-    # --- 6. MODIFIED: Pass new data and state to template ---
-    # The template now receives the list of dictionaries and the current sort/search state.
     return render_template('sponsor/my_organization_drivers.html', 
                            drivers_with_points=driver_data, 
                            current_sort=sort_by, 
@@ -893,6 +893,83 @@ def view_my_store():
                          ORG_ID=sponsor.ORG_ID,
                          org_id=sponsor.ORG_ID)
 
+@sponsor_bp.route('/point_requests')
+@login_required
+@role_required(Role.SPONSOR)
+def list_point_requests():
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor or not sponsor.ORG_ID:
+        flash("Organization not found.", "danger")
+        return redirect(url_for('sponsor_bp.dashboard'))
+
+    # Fetch pending requests for this sponsor's organization
+    requests = PointRequest.query.filter_by(
+        ORG_ID=sponsor.ORG_ID, 
+        STATUS='Pending'
+    ).order_by(PointRequest.CREATED_AT.desc()).all()
+
+    return render_template('sponsor/point_requests.html', requests=requests)
+
+@sponsor_bp.route('/point_requests/<int:req_id>/<action>', methods=['POST'])
+@login_required
+@role_required(Role.SPONSOR)
+def handle_point_request(req_id, action):
+    # Verify request exists
+    req = PointRequest.query.get_or_404(req_id)
+    
+    # Verify sponsor owns this request (via Organization)
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor or req.ORG_ID != sponsor.ORG_ID:
+        flash("Permission denied.", "danger")
+        return redirect(url_for('sponsor_bp.list_point_requests'))
+
+    if action == 'approve':
+        req.STATUS = 'Approved'
+        
+        # Find the association and add points
+        assoc = DriverSponsorAssociation.query.filter_by(
+            driver_id=req.DRIVER_ID, 
+            ORG_ID=req.ORG_ID
+        ).first()
+        
+        if assoc:
+            assoc.points += req.POINTS
+            
+            # Log the event
+            log_audit_event(
+                DRIVER_POINTS,
+                f"Sponsor {current_user.USERNAME} approved request: Awarded {req.POINTS} points to driver {req.driver.user_account.USERNAME}. Reason: {req.REASON}"
+            )
+            
+            # Create notification
+            Notification.create_notification(
+                recipient_code=req.DRIVER_ID,
+                sender_code=current_user.USER_CODE,
+                message=f"Your request for {req.POINTS} points was APPROVED. Reason: {req.REASON}"
+            )
+            flash(f"Request approved. {req.POINTS} points added to driver.", "success")
+        else:
+            flash("Error: Driver is no longer associated with this organization.", "danger")
+
+    elif action == 'reject':
+        req.STATUS = 'Rejected'
+        
+        # Log
+        log_audit_event(
+            DRIVER_POINTS,
+            f"Sponsor {current_user.USERNAME} REJECTED point request from {req.driver.user_account.USERNAME}."
+        )
+        
+        # Notify
+        Notification.create_notification(
+            recipient_code=req.DRIVER_ID,
+            sender_code=current_user.USER_CODE,
+            message=f"Your request for {req.POINTS} points was REJECTED."
+        )
+        flash("Request rejected.", "warning")
+
+    db.session.commit()
+    return redirect(url_for('sponsor_bp.list_point_requests'))
 
 @sponsor_bp.route("/application_history")
 @login_required

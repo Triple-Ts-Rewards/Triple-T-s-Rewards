@@ -38,24 +38,44 @@
 
             {% endif %}
 
-            <form method="POST" action="{{ url_for('sponsor_bp.apply_for_organization') }}" style="margin-top: 1.5rem;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="margin-top: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eee;">
+                <h3>Join an Existing Organization</h3>
+                <form method="POST" action="{{ url_for('sponsor_bp.apply_for_organization') }}" class="form-inline" style="display:flex; gap:1rem; align-items:flex-end;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="form-group" style="flex-grow:1;">
+                        <label for="existing_org_select">Select Organization</label>
+                        <select id="existing_org_select" name="org_name" class="form-control" style="width:100%;">
+                            <option value="" disabled selected>-- Choose an Organization --</option>
+                            {% for org in available_orgs %}
+                                <option value="{{ org.ORG_NAME }}">{{ org.ORG_NAME }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success">Join Selected</button>
+                </form>
+            </div>
+            <div style="margin-top: 1.5rem;">
+                <h3>Create or Update Organization</h3>
+                <form method="POST" action="{{ url_for('sponsor_bp.apply_for_organization') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                <div class="form-group">
-                    <label for="org_name">Organization Name</label>
-                    <input type="text" 
-                           id="org_name" 
-                           name="org_name" 
-                           value="{{ sponsor.organization.ORG_NAME if sponsor and sponsor.organization else '' }}" 
-                           required 
-                           placeholder="e.g., Triple-T Trucking Rewards">
-                    <small class="text-muted">Drivers will see this name when applying for sponsorship.</small>
-                </div>
+                    <div class="form-group">
+                        <label for="org_name">Organization Name</label>
+                        <input type="text" 
+                               id="org_name" 
+                               name="org_name" 
+                               value="{{ sponsor.organization.ORG_NAME if sponsor and sponsor.organization else '' }}" 
+                               required 
+                               placeholder="e.g., Triple-T Trucking Rewards">
+                        <small class="text-muted">Drivers will see this name when applying for sponsorship.</small>
+                    </div>
 
-                <div class="form-actions" style="margin-top: 1.5rem;">
-                    <button type="submit" class="btn btn-primary">Submit for Approval / Update Details</button>
-                </div>
-            </form>
+                    <div class="form-actions" style="margin-top: 1.5rem;">
+                        <button type="submit" class="btn btn-primary">Submit for Approval / Update Details</button>
+                    </div>
+                </form>
+            </div>
       </div>
   </div>
 

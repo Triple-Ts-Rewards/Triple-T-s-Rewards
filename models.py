@@ -357,3 +357,17 @@ class ImpersonationLog(db.Model):
     target_id = db.Column(db.Integer, db.ForeignKey('USERS.USER_CODE'), nullable=False)
     action = db.Column(db.String(20), nullable=False)  
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+class PointRequest(db.Model):
+    __tablename__ = 'POINT_REQUESTS'
+    REQUEST_ID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    DRIVER_ID = db.Column(db.Integer, db.ForeignKey('DRIVERS.DRIVER_ID'), nullable=False)
+    ORG_ID = db.Column(db.Integer, db.ForeignKey('ORGANIZATIONS.ORG_ID'), nullable=False)
+    POINTS = db.Column(db.Integer, nullable=False)
+    REASON = db.Column(db.String(255), nullable=False)
+    # Status can be 'Pending', 'Approved', or 'Rejected'
+    STATUS = db.Column(db.String(20), default='Pending', nullable=False)
+    CREATED_AT = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    driver = db.relationship('Driver', backref='point_requests')
+    organization = db.relationship('Organization', backref='point_requests')

@@ -481,3 +481,25 @@ def reset_token(token: str):
 @unauthenticated_only(redirect_to='driver_bp.dashboard') 
 def signup_page():
     return render_template('common/driver_signup.html')
+
+@auth_bp.post("/settings/notifications")
+@login_required
+def update_notifications():
+    
+    if current_user.USER_TYPE == Role.SPONSOR:
+        wants_orders = request.form.get('wants_order_notifications') == 'on'
+        current_user.wants_order_notifications = wants_orders
+        
+    elif current_user.USER_TYPE == Role.DRIVER:
+        wants_points = request.form.get('wants_point_notifications') == 'on'
+        wants_orders = request.form.get('wants_order_notifications') == 'on'
+        wants_security = request.form.get('wants_security_notifications') == 'on'
+        
+        current_user.wants_point_notifications = wants_points
+        current_user.wants_order_notifications = wants_orders
+        current_user.wants_security_notifications = wants_security
+    
+    db.session.commit()
+    flash('Notification preferences updated.', 'success')
+    
+    return redirect(url_for('auth.settings'))

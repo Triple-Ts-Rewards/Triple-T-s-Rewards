@@ -40,6 +40,63 @@
           </form>
         {% endif %}
       </div>
+
+      {% if current_user.USER_TYPE == 'sponsor' or current_user.USER_TYPE == 'driver' %}
+      <div class="card-elevated" style="padding:1.5rem; box-shadow:none; border:1px solid var(--border);">
+        <h3>Notification Preferences</h3>
+        <p>Manage the alerts you receive via email.</p>
+        
+        <form method="post" action="{{ url_for('auth.update_notifications') }}" style="margin-top:1rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            {% if current_user.USER_TYPE == 'driver' %}
+            <div style="margin-bottom: 1rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:500;">
+                    <input type="checkbox" name="wants_point_notifications" 
+                           style="width:1.2rem; height:1.2rem;"
+                           {% if current_user.wants_point_notifications %}checked{% endif %}>
+                    <span>Point Notifications</span>
+                </label>
+                <small class="text-muted" style="display:block; margin-left: 2rem; margin-top:0.25rem;">
+                    Receive an alert when a sponsor awards or deducts points.
+                </small>
+            </div>
+            {% endif %}
+
+            <div style="margin-bottom: 1rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:500;">
+                    <input type="checkbox" name="wants_order_notifications" 
+                           style="width:1.2rem; height:1.2rem;"
+                           {% if current_user.wants_order_notifications %}checked{% endif %}>
+                    <span>Order Notifications</span>
+                </label>
+                <small class="text-muted" style="display:block; margin-left: 2rem; margin-top:0.25rem;">
+                    {% if current_user.USER_TYPE == 'sponsor' %}
+                        Receive an email when a driver purchases an item from your catalog.
+                    {% else %}
+                        Receive a notification when your order is placed (Driver).
+                    {% endif %}
+                </small>
+            </div>
+            
+            {% if current_user.USER_TYPE == 'driver' %}
+            <div style="margin-bottom: 1rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:500;">
+                    <input type="checkbox" name="wants_security_notifications" 
+                           style="width:1.2rem; height:1.2rem;"
+                           {% if current_user.wants_security_notifications %}checked{% endif %}>
+                    <span>Security Notifications</span>
+                </label>
+                <small class="text-muted" style="display:block; margin-left: 2rem; margin-top:0.25rem;">
+                    Receive alerts for failed login attempts or password changes.
+                </small>
+            </div>
+            {% endif %}
+
+            <button class="btn btn-primary" type="submit">Save Preferences</button>
+        </form>
+      </div>
+      {% endif %}
     </div>
   </div>
 

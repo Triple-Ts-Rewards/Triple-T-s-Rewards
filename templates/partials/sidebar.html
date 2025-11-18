@@ -92,12 +92,6 @@
                     Point History
                 </a>
             </li>
-            <li>
-                {% set driver_settings_endpoints = ['driver_bp.settings', 'driver_bp.update_info', 'driver_bp.addresses', 'driver_bp.address_form'] %}
-                <a href="{{ url_for('driver_bp.settings') }}" class="sidebar-link {{ 'active' if request.endpoint in driver_settings_endpoints else '' }}">
-                    Account Settings
-                </a>
-            </li>
         {% endif %}
   </ul>
 </aside>
