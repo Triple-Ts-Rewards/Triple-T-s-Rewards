@@ -7,7 +7,7 @@ from extensions import db
 from sqlalchemy import or_
 from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL)
 from datetime import datetime, timedelta
-from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization
+from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization, DriverApplication
 import csv
 from io import StringIO
 from audit_types import AUDIT_CATEGORIES
@@ -569,3 +569,24 @@ def clear_timeout(user_id):
     log_audit_event(ADMIN_CLEAR_TIMEOUT, f"Timeout cleared for user {user.USERNAME}.")
     flash(f"Timeout cleared for user {user.USERNAME}.", "success")
     return redirect(url_for("administrator_bp.timeout_users"))
+
+
+@administrator_bp.route("/application-oversight")
+@login_required
+@role_required(Role.ADMINISTRATOR)
+def application_oversight():
+    """
+    Admin view of all driver applications, status, and decision maker.
+    """
+    # Query all applications, joining with Organization for the name 
+    # and User (via SPONSOR_RESPONSIBLE_ID) for the decision-maker's name.
+    applications = DriverApplication.query.outerjoin(
+        DriverApplication.organization
+    ).outerjoin(
+        DriverApplication.sponsor_responsible
+    ).order_by(
+        DriverApplication.RESPONDED_AT.desc(),
+        DriverApplication.APPLIED_AT.desc() 
+    ).all()
+    
+    return render_template("administrator/application_oversight.html", applications=applications)

@@ -526,3 +526,18 @@ def request_points():
         return redirect(url_for('driver_bp.dashboard'))
 
     return render_template('driver/request_points.html', associations=associations)
+
+# Displays a list of all past and current applications for the logged-in driver.   
+@driver_bp.route("/application-history")
+@login_required
+@role_required(Role.DRIVER)
+def application_history():
+    
+    # Query all applications for the current driver, ordering by newest first
+    applications = DriverApplication.query.filter_by(
+        DRIVER_ID=current_user.USER_CODE
+    ).order_by(
+        DriverApplication.APPLIED_AT.desc()
+    ).all()
+    
+    return render_template("driver/application_history.html", applications=applications)

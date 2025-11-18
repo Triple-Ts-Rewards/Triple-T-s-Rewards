@@ -705,7 +705,32 @@ def driver_decision(app_id, decision):
     else:
         app.STATUS = "Rejected"
 
+    app.RESPONDED_AT = datetime.utcnow()
+    app.SPONSOR_RESPONSIBLE_ID = current_user.USER_CODE
+
     db.session.commit()
+
+    # Send notification to the driver
+    try:
+        driver_user = User.query.get(app.DRIVER_ID)
+        if driver_user:
+            organization_name = sponsor.organization.ORG_NAME if sponsor.organization else "Your Sponsor Organization"
+            
+            message = (
+                f"Your application to join **{organization_name}** has been "
+                f"**{app.STATUS.upper()}** by {current_user.USERNAME}."
+            )
+            
+            Notification.create_notification(
+                recipient_code=driver_user.USER_CODE,
+                sender_code=current_user.USER_CODE,
+                message=message
+            )
+            
+    except Exception as e:
+        # Log the error, but don't stop the route from committing
+        print(f"Error sending notification for application {app_id}: {e}")
+
     flash(f"Driver application has been {decision}ed!", "success")
     return redirect(url_for("sponsor_bp.review_driver_applications"))
 
@@ -945,3 +970,31 @@ def handle_point_request(req_id, action):
 
     db.session.commit()
     return redirect(url_for('sponsor_bp.list_point_requests'))
+
+@sponsor_bp.route("/application_history")
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def organization_app_history():
+    """
+    Sponsor view of all applications (Pending, Accepted, Rejected) for their organization.
+    """
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor:
+        flash("Sponsor organization record not found.", "danger")
+        return redirect(url_for('sponsor_bp.dashboard'))
+    
+    # Query all applications for THIS organization (ORG_ID), joining to show the decision-maker
+    applications = DriverApplication.query.filter_by(
+        ORG_ID=sponsor.ORG_ID
+    ).outerjoin(
+        DriverApplication.sponsor_responsible
+    ).order_by(
+        DriverApplication.RESPONDED_AT.desc(),
+        DriverApplication.APPLIED_AT.desc()
+    ).all()
+    
+    return render_template(
+        "sponsor/application_history.html", 
+        applications=applications,
+        organization_name=sponsor.organization.ORG_NAME if sponsor.organization else "Your Organization"
+    )
