@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
-from models import StoreSettings, CartItem, User, Notification, Address, WishlistItem, DriverSponsorAssociation
+from models import StoreSettings, CartItem, User, Notification, Address, WishlistItem, DriverSponsorAssociation, Sponsor
 from extensions import db
 import requests
 import os
@@ -14,7 +14,6 @@ rewards_bp = Blueprint('rewards_bp', __name__, template_folder="../templates")
 
 # --- Helper function to get eBay Access Token ---
 def get_ebay_access_token():
-    # (No changes needed in this function)
     if USE_SANDBOX:
         app_id = os.getenv('EBAY_APP_ID')
         cert_id = os.getenv('EBAY_CERT_ID')
@@ -292,6 +291,29 @@ def checkout():
         return redirect(url_for('rewards_bp.view_cart', sponsor_id=sponsor_id))
 
     association.points -= total_points
+
+    # Get the list of items for the message
+    item_summary_list = []
+    for item in cart_items:
+        item_summary_list.append(f"{item.title} for {item.points * item.quantity} points")
+    
+    items_string = ", ".join(item_summary_list)
+    
+    # Build the message
+    message = (
+        f"Driver {current_user.USERNAME} purchased {items_string} from your catalog."
+    )
+    
+    # Find all sponsors belonging to this organization
+    sponsors = Sponsor.query.filter_by(ORG_ID=sponsor_id).all()
+    
+    # Send notification to each sponsor
+    for sponsor in sponsors:
+        Notification.create_notification(
+            recipient_code=sponsor.USER_CODE,
+            sender_code=current_user.USER_CODE,
+            message=message
+        )
     
     # Send notification if enabled
     if current_user.wants_order_notifications:
