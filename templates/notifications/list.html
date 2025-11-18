@@ -13,8 +13,11 @@
       <h2>Quick Actions</h2>
     </div>
     <div class="org-card-body">
-      <div class="dashboard-actions" style="max-width:320px;">
-        <a href="{{ url_for('notification_bp.send_message') }}" class="btn btn-primary">New Message</a>
+      <div class="dashboard-actions" style="flex-direction:row; flex-wrap:wrap; gap:0.75rem;">
+        <a href="{{ url_for('notification_bp.conversations') }}" class="btn btn-outline">Direct Messages</a>
+        {% if current_user.USER_TYPE in ['sponsor', 'administrator'] %}
+          <a href="{{ url_for('notification_bp.send_message') }}" class="btn btn-primary">Broadcast Message</a>
+        {% endif %}
       </div>
     </div>
   </div>
