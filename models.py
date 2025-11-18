@@ -203,7 +203,13 @@ class DriverApplication(db.Model):
     REASON = db.Column(db.String(255))
     APPLIED_AT = db.Column(db.DateTime, server_default=db.func.now())
     LICENSE_NUMBER = db.Column(db.String(50), nullable=True)
+    RESPONDED_AT = db.Column(db.DateTime, nullable=True) 
+    SPONSOR_RESPONSIBLE_ID = db.Column(db.Integer, db.ForeignKey("USERS.USER_CODE"), nullable=True)
+
     driver = db.relationship("Driver", back_populates="applications")
+    # Add the relationship for the responsible sponsor/user
+    sponsor_responsible = db.relationship("User", foreign_keys=[SPONSOR_RESPONSIBLE_ID], backref="decisions_made")
+
     #sponsor = db.relationship("Sponsor", back_populates="applications")
     organization = db.relationship("Organization", backref="driver_applications")
 

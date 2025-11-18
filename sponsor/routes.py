@@ -705,7 +705,32 @@ def driver_decision(app_id, decision):
     else:
         app.STATUS = "Rejected"
 
+    app.RESPONDED_AT = datetime.utcnow()
+    app.SPONSOR_RESPONSIBLE_ID = current_user.USER_CODE
+
     db.session.commit()
+
+    # Send notification to the driver
+    try:
+        driver_user = User.query.get(app.DRIVER_ID)
+        if driver_user:
+            organization_name = sponsor.organization.ORG_NAME if sponsor.organization else "Your Sponsor Organization"
+            
+            message = (
+                f"Your application to join **{organization_name}** has been "
+                f"**{app.STATUS.upper()}** by {current_user.USERNAME}."
+            )
+            
+            Notification.create_notification(
+                recipient_code=driver_user.USER_CODE,
+                sender_code=current_user.USER_CODE,
+                message=message
+            )
+            
+    except Exception as e:
+        # Log the error, but don't stop the route from committing
+        print(f"Error sending notification for application {app_id}: {e}")
+
     flash(f"Driver application has been {decision}ed!", "success")
     return redirect(url_for("sponsor_bp.review_driver_applications"))
 
