@@ -1,6 +1,11 @@
 <nav class="site-nav">
   <div class="nav-left">
 
+    <!-- Sidebar toggle (visible only on small screens) -->
+    <button class="sidebar-toggle" aria-label="Toggle navigation">
+      ☰
+    </button>
+
     <a class="nav-link {{ 'active' if request.endpoint == 'common.index' else '' }}"
        href="{{ url_for('common.index') }}">
       <img src="{{ url_for('static', filename='ttt_logo.png') }}" alt="Triple T's Rewards" class="nav-logo">

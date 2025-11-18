@@ -1,93 +1,112 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline">← Back to Dashboard</a>
-    <h2 class="mb-3">Accepted Drivers in My Organization</h2>
-    <p class="text-muted">This list shows only the drivers you have officially accepted (STATUS='Accepted').</p>
 
-    <form method="GET" action="{{ url_for('sponsor_bp.driver_management') }}" class="form-inline mb-3">
-        {# Pass the sort state to the filter form #}
-        <input type="hidden" name="sort" value="{{ current_sort }}">
-        <div class="form-group mr-2">
-            <label for="search" class="sr-only">Search Username</label>
-            <input type="text" name="search" id="search" class="form-control" placeholder="Search username" value="{{ search_query or '' }}">
-        </div>
-        <button type="submit" class="btn btn-primary">Search</button>
-    </form>
-    
-    {% if drivers_with_points %}
-    <table class="table table-striped table-hover">
-        <thead class="thead-dark">
-            <tr>
-                <th>Driver Name</th>
-                <th>
-                    <a href="{{ url_for('sponsor_bp.driver_management', sort='username_desc' if current_sort != 'username_desc' else 'username_asc', search=search_query) }}"
-                    style="color:#86C232; text-decoration:none;">
-                        Username
-                        {% if current_sort == 'username_desc' %}
-                            ▲
-                        {% elif current_sort == 'username_asc' %}
-                            ▼
-                        {% else %}
-                            <i class="fa-solid fa-sort" style="color:#ccc;"></i>
-                        {% endif %}
-                    </a>
-                </th>
-                <th>Email</th>
-                <th>
-                    <a href="{{ url_for('sponsor_bp.driver_management', sort='points_desc' if current_sort != 'points_desc' else 'points_asc', search=search_query) }}"
-                    style="color:#86C232; text-decoration:none;">
-                        Current Points
-                        {% if current_sort == 'points_desc' %}
-                            ▲
-                        {% elif current_sort == 'points_asc' %}
-                            ▼
-                        {% else %}
-                            <i class="fa-solid fa-sort" style="color:#ccc;"></i>
-                        {% endif %}
-                    </a>
-                </th>
-                <th>Action</th> 
-            </tr>
-        </thead>
-        <tbody>
-            {% for driver in drivers_with_points %}
-            <tr>
-                <td>{{ driver.user.FNAME }} {{ driver.user.LNAME }}</td>
-                <td>{{ driver.user.USERNAME }}</td>
-                <td>{{ driver.user.EMAIL }}</td>
-                <td><span class="badge bg-primary">{{ driver.points }}</span></td>
-                <td>
-                    <a href="{{ url_for('sponsor_bp.manage_points_page') }}?search={{ driver.user.USERNAME }}" 
-                       class="btn btn-sm btn-info">Manage Points</a>
+  <div class="page-header" style="justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+      <div>
+          <h1>Accepted Drivers</h1>
+          <p class="text-muted" style="margin: 0;">Drivers you have officially accepted into your organization.</p>
+      </div>
+      <div style="display:flex; gap:0.75rem; align-items:center; margin-left:auto;">
+          <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline">← Back to Dashboard</a>
+      </div>
+  </div>
 
-                    <form method="POST" 
-                          action="{{ url_for('sponsor_bp.reset_driver_password', driver_id=driver.user.USER_CODE) }}" 
-                          style="display:inline;" 
-                          onsubmit="return confirm('Are you sure you want to reset {{ driver.user.USERNAME }}\'s password? This will generate a new temporary password.');">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-outline">Reset Password</button>
-                    </form>
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Filter & Search</h2>
+      </div>
+      <div class="org-card-body">
+          <form method="GET" action="{{ url_for('sponsor_bp.driver_management') }}" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
+              <input type="hidden" name="sort" value="{{ current_sort }}">
+              <div class="form-group" style="flex:1; min-width:220px;">
+                  <label for="search">Search Username</label>
+                  <input type="text" name="search" id="search" placeholder="Search username" value="{{ search_query or '' }}">
+              </div>
+              <button type="submit" class="btn btn-primary">Search</button>
+          </form>
+      </div>
+  </div>
 
-                    <form method="POST" 
-                          action="{{ url_for('impersonation_bp.start_impersonation', target_id=driver.user.USER_CODE) }}" 
-                          style="display:inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-outline">Impersonate</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="alert alert-warning" role="alert">
-        🛑 You do not currently have any accepted drivers in your organization.
-        <br>
-        <a href="{{ url_for('sponsor_bp.review_driver_applications') }}" class="alert-link">Click here to review pending applications.</a>
-    </div>
-    {% endif %}
+  {% if drivers_with_points %}
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Drivers</h2>
+      </div>
+      <div class="org-card-body">
+          <div class="table-responsive">
+              <table>
+                  <thead>
+                      <tr>
+                          <th>Driver Name</th>
+                          <th>
+                              <a href="{{ url_for('sponsor_bp.driver_management', sort='username_desc' if current_sort != 'username_desc' else 'username_asc', search=search_query) }}" class="link-muted">
+                                  Username
+                                  {% if current_sort == 'username_desc' %}
+                                      ▲
+                                  {% elif current_sort == 'username_asc' %}
+                                      ▼
+                                  {% else %}
+                                      <span style="opacity:0.6;">⇅</span>
+                                  {% endif %}
+                              </a>
+                          </th>
+                          <th>Email</th>
+                          <th>
+                              <a href="{{ url_for('sponsor_bp.driver_management', sort='points_desc' if current_sort != 'points_desc' else 'points_asc', search=search_query) }}" class="link-muted">
+                                  Current Points
+                                  {% if current_sort == 'points_desc' %}
+                                      ▲
+                                  {% elif current_sort == 'points_asc' %}
+                                      ▼
+                                  {% else %}
+                                      <span style="opacity:0.6;">⇅</span>
+                                  {% endif %}
+                              </a>
+                          </th>
+                          <th>Actions</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {% for driver in drivers_with_points %}
+                      <tr>
+                          <td>{{ driver.user.FNAME }} {{ driver.user.LNAME }}</td>
+                          <td>{{ driver.user.USERNAME }}</td>
+                          <td>{{ driver.user.EMAIL }}</td>
+                          <td><span class="badge-small">{{ driver.points }}</span></td>
+                          <td>
+                              <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+                                  <a href="{{ url_for('sponsor_bp.manage_points_page') }}?search={{ driver.user.USERNAME }}" class="table-btn table-btn-accent">Manage Points</a>
 
-</div>
+                                  <form method="POST" action="{{ url_for('sponsor_bp.reset_driver_password', driver_id=driver.user.USER_CODE) }}" onsubmit="return confirm('Reset {{ driver.user.USERNAME }}\'s password?');">
+                                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                      <button type="submit" class="table-btn">Reset Password</button>
+                                  </form>
+
+                                  <form method="POST" action="{{ url_for('impersonation_bp.start_impersonation', target_id=driver.user.USER_CODE) }}">
+                                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                      <button type="submit" class="table-btn">Impersonate</button>
+                                  </form>
+
+                                  <form method="POST" action="{{ url_for('sponsor_bp.drop_driver', driver_id=driver.user.USER_CODE) }}" onsubmit="return confirm('Remove {{ driver.user.USERNAME }} from your organization?');">
+                                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                      <button type="submit" class="table-btn table-btn-danger" title="Drop this driver">Drop Driver</button>
+                                  </form>
+                              </div>
+                          </td>
+                      </tr>
+                      {% endfor %}
+                  </tbody>
+              </table>
+          </div>
+      </div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+      <div class="empty-state-icon">🛑</div>
+      <p class="empty-state-heading">You do not currently have any accepted drivers.</p>
+      <a href="{{ url_for('sponsor_bp.review_driver_applications') }}" class="empty-state-action">Review Applications</a>
+  </div>
+  {% endif %}
+
 {% endblock %}

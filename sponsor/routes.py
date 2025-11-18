@@ -2,16 +2,43 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from common.decorators import role_required
-from common.logging import log_audit_event, DRIVER_POINTS
+from common.logging import log_audit_event, DRIVER_POINTS, DRIVER_DROPPED, log_driver_dropped
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
-from models import User, Role, StoreSettings, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization
+from extensions import db
+from models import AuditLog, User, Role, StoreSettings, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization
 from extensions import db, bcrypt
 import secrets
 import string
 
 # Blueprint for sponsor-related routes
 sponsor_bp = Blueprint('sponsor_bp', __name__, template_folder="../templates")
+
+@sponsor_bp.get("/reports/organization")
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def organization_reports():
+    # Find this sponsor's organization
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if sponsor is None:
+        flash("Sponsor record not found.", "danger")
+        return redirect(url_for("sponsor_bp.dashboard"))
+
+    # Pull ONLY logs where this sponsor’s org was involved
+    logs = (
+        AuditLog.query
+        .filter(AuditLog.EVENT_TYPE == DRIVER_DROPPED)
+        .filter(AuditLog.DETAILS.ilike(f"%org={sponsor.ORG_ID}%"))
+        .order_by(AuditLog.CREATED_AT.desc())
+        .all()
+    )
+
+    return render_template(
+        "sponsor/organization_reports.html",
+        logs=logs,
+        sponsor=sponsor,
+    )
+
 
 @sponsor_bp.route("/apply-for-organization", methods=["GET", "POST"])
 @role_required(Role.SPONSOR)
@@ -207,6 +234,18 @@ def manage_points_page():
 
     # Fetch all associations for this sponsor
     sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+
+    # Restrict access if sponsor has no organization or no drivers
+    if not sponsor or not sponsor.ORG_ID:
+        flash("You must belong to an organization to access this page.", "warning")
+        return redirect(url_for('sponsor_bp.dashboard'))
+
+    # Check if sponsor has any drivers under their organization
+    driver_count = DriverSponsorAssociation.query.filter_by(ORG_ID=sponsor.ORG_ID).count()
+    if driver_count == 0:
+        flash("You must have at least one driver in your organization to access this page.", "warning")
+        return redirect(url_for('sponsor_bp.dashboard'))
+
     associations = DriverSponsorAssociation.query.filter_by(ORG_ID=sponsor.ORG_ID).all()
 
     # Combine driver user info with their points
@@ -492,6 +531,139 @@ def driver_management():
                            drivers_with_points=driver_data, 
                            current_sort=sort_by, 
                            search_query=search_query)
+    
+@sponsor_bp.get("/organization/reports")
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def organization_reports_menu():
+    return render_template("sponsor/organization_reports.html")
+
+@sponsor_bp.get("/organization/reports/dropped_drivers")
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def dropped_drivers_report():
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor:
+        flash("Sponsor record not found.", "danger")
+        return redirect(url_for("sponsor_bp.dashboard"))
+
+    org_id = sponsor.ORG_ID
+
+    # Pull audit logs where EVENT_TYPE = DRIVER_DROPPED and org matches this sponsor's org
+    rows = (
+        AuditLog.query
+        .filter(AuditLog.EVENT_TYPE == DRIVER_DROPPED)
+        .filter(AuditLog.DETAILS.ilike(f"%org={org_id}%"))
+        .order_by(AuditLog.CREATED_AT.desc())
+        .all()
+    )
+
+    # Parse out driver / sponsor ids and join to User for nice display
+    parsed = []
+    for row in rows:
+        parts = {}
+        for token in (row.DETAILS or "").split():
+            if "=" in token:
+                k, v = token.split("=", 1)
+                parts[k] = v
+
+        driver_user = None
+        sponsor_user = None
+        try:
+            driver_id = int(parts.get("driver", "0"))
+            sponsor_id = int(parts.get("sponsor", "0"))
+        except ValueError:
+            driver_id = sponsor_id = 0
+
+        if driver_id:
+            driver_user = User.query.get(driver_id)
+        if sponsor_id:
+            sponsor_user = User.query.get(sponsor_id)
+
+        parsed.append({
+            "log": row,
+            "driver": driver_user,
+            "sponsor": sponsor_user,
+            "org_id": org_id,
+        })
+
+    return render_template(
+        "sponsor/report_dropped_drivers.html",
+        rows=parsed,
+        org_id=org_id,
+    )
+
+
+# POST /sponsor/drivers/<driver_id>/drop
+@sponsor_bp.route("/drivers/<int:driver_id>/drop", methods=["POST"], endpoint="drop_driver")
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def drop_driver(driver_id: int):
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor:
+        flash("Sponsor record not found.", "danger")
+        return redirect(url_for("sponsor_bp.driver_management"))
+
+    driver_user = User.query.get(driver_id)
+    if not driver_user or driver_user.USER_TYPE != Role.DRIVER:
+        flash("Driver not found.", "danger")
+        return redirect(url_for("sponsor_bp.driver_management"))
+
+    # IMPORTANT: use ORG_ID here (matches your schema)
+    app = DriverApplication.query.filter_by(
+        DRIVER_ID=driver_id,           # DRIVER_ID matches USERS.USER_CODE in your schema
+        ORG_ID=sponsor.ORG_ID,
+        STATUS="Accepted"
+    ).first()
+    
+    if app and app.STATUS == "Accepted":
+        app.STATUS = "Dropped"
+        if hasattr(app, 'UPDATED_AT'):
+            app.UPDATED_AT = datetime.utcnow()
+    
+     # IMPORTANT: use ORG_ID here (matches your schema)
+    assoc = DriverSponsorAssociation.query.filter_by(
+        driver_id=driver_id,
+        ORG_ID=sponsor.ORG_ID
+    ).first()
+
+
+    if not app and not assoc:
+        flash("That driver is not currently in your organization.", "warning")
+        return redirect(url_for("sponsor_bp.driver_management"))
+
+     # 5) Mark the application as no longer accepted (you can use 'Rejected' or 'Dropped')
+    if app:
+        app.STATUS = "Rejected"  # or "Dropped" if you add that to the Enum
+
+    # 6) Delete the association row so points link is gone
+    if assoc:
+        db.session.delete(assoc)
+        
+    db.session.commit()
+
+    # notify driver (non-blocking if you like)
+    try:
+        Notification.create_notification(
+            recipient_code=driver_user.USER_CODE,
+            sender_code=current_user.USER_CODE,
+            message=(
+            f"You have been removed from the organization "
+            f"{sponsor.organization.ORG_NAME} by {current_user.USERNAME}."
+            )
+        )
+    except Exception as e:
+        log_driver_dropped("DROP_DRIVER_NOTIFY_FAIL",
+                        f"driver={driver_user.USERNAME} err={e}")
+
+    log_driver_dropped(
+    sponsor_id=current_user.USER_CODE,
+    org_id=sponsor.ORG_ID,
+    driver_id=driver_id,
+)
+
+    flash(f"Driver '{driver_user.USERNAME}' has been removed from your organization.", "info")
+    return redirect(url_for("sponsor_bp.driver_management"))
 
 # Sponsor Review Applications
 @sponsor_bp.route("/applications")
@@ -643,7 +815,7 @@ def reset_driver_password(driver_id):
 @sponsor_bp.route('/change_password', methods=['GET', 'POST'])
 @role_required(Role.DRIVER, Role.SPONSOR, allow_admin=True, redirect_to='auth.login')
 def change_password():
-    from extensions import db
+    
 
     if request.method == 'POST':
         current_password = request.form.get('current_password')

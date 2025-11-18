@@ -12,122 +12,126 @@
 {% endblock %}
 
 {% block content %}
-  <div class="container">
-    <div class="card">
-      <div class="app-header-row" style="display:flex; align-items:center; gap:.75rem; margin-bottom:1rem;">
-        <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline" aria-label="Back to Administrator Dashboard">
-          ← Back
-        </a>
-        <h1 style="margin:0;">Active Users</h1>
+
+  <!-- Page Title -->
+  <div class="page-header">
+      <h1>Active Users</h1>
+  </div>
+
+  <div class="card-elevated">
+
+      <div class="org-card-body">
+
+          <!-- Back Button -->
+          <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn-dash" aria-label="Back to Administrator Dashboard" style="margin-bottom: 1rem; display:inline-flex;">
+              ← Back
+          </a>
+
+          <!-- Filter + Search -->
+          <form id="filter-form" method="GET" action="{{ url_for('administrator_bp.accounts') }}" style="display:flex; flex-direction:column; gap:1rem; margin-bottom:1.5rem;">
+              
+              <div style="display:flex; align-items:center; gap:.5rem;">
+                  <input type="text" name="search" placeholder="Search by username..." value="{{ request.args.get('search', '') }}" aria-label="Search by username" class="input" style="flex:1;">
+                  
+                  <button type="submit" class="btn-outline btn">Search</button>
+
+                  <button id="filter-toggle" type="button" class="btn-outline btn" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center;" title="Filter by role" aria-label="Filter by role">
+                      <i class="fa fa-filter"></i>
+                  </button>
+              </div>
+
+              <div id="role-filter" style="display:none; flex-wrap:wrap; gap:.5rem; background: var(--surface); padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                  <select name="role" class="input">
+                      <option value="">All Roles</option>
+                      <option value="administrator" {% if request.args.get('role') == 'administrator' %}selected{% endif %}>Admin</option>
+                      <option value="sponsor" {% if request.args.get('role') == 'sponsor' %}selected{% endif %}>Sponsor</option>
+                      <option value="driver" {% if request.args.get('role') == 'driver' %}selected{% endif %}>Driver</option>
+                  </select>
+
+                  <button type="submit" class="btn-outline btn">Apply</button>
+                  <a href="{{ url_for('administrator_bp.accounts') }}" class="btn-outline btn">Reset</a>
+              </div>
+          </form>
+
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              const toggle = document.getElementById('filter-toggle');
+              const roleSection = document.getElementById('role-filter');
+              toggle.addEventListener('click', () => {
+                roleSection.style.display = roleSection.style.display === 'none' ? 'flex' : 'none';
+              });
+            });
+          </script>
+
+          <!-- User Table -->
+          {% if accounts %}
+            <table aria-describedby="active-users-caption">
+              <caption id="active-users-caption" class="text-muted" style="text-align:left; padding:.5rem 0;">
+                List of currently active users
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Username</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Joined</th>
+                  <th scope="col" style="width: 140px;">Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+              {% for user in accounts|sort(attribute='USER_TYPE') %}
+                <tr>
+                  <td><strong>{{ user.USERNAME }}</strong></td>
+                  <td>{{ user.FNAME }} {{ user.LNAME }}</td>
+                  <td>{{ user.EMAIL }}</td>
+
+                  <td>
+                    <span class="badge-outline-small">{{ user.USER_TYPE }}</span>
+                  </td>
+
+                  <td>{{ user.CREATED_AT.strftime('%Y-%m-%d %H:%M') }}</td>
+
+                  <td>
+                    <div style="display:flex; gap:.5rem; align-items:center;">
+
+                      {% if user.USER_CODE != current_user.USER_CODE %}
+                      <form method="POST" action="{{ url_for('impersonation_bp.start_impersonation', target_id=user.USER_CODE) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="table-btn table-btn-accent">Impersonate</button>
+                      </form>
+                      {% endif %}
+
+                      <a href="{{ url_for('administrator_bp.edit_user', user_id=user.USER_CODE) }}" class="table-btn">
+                        Edit
+                      </a>
+
+                      {% if user.USER_CODE != current_user.USER_CODE %}
+                      <form method="POST" action="{{ url_for('administrator_bp.disable_user', user_id=user.USER_CODE) }}"
+                        onsubmit="return confirm('WARNING: Disable {{ user.USERNAME }}?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="table-btn table-btn-danger">Disable</button>
+                      </form>
+                      {% endif %}
+
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+
+            </table>
+
+          {% else %}
+            <div class="empty-state">
+              <div class="empty-state-icon">👤</div>
+              <p class="empty-state-heading">No active users found.</p>
+            </div>
+          {% endif %}
+
       </div>
 
-      <form id="filter-form" method="GET" action="{{ url_for('administrator_bp.accounts') }}" style="display:flex; flex-direction:column; gap:.5rem; margin-bottom:1rem;">
-        <div style="display:flex; align-items:center; gap:.5rem;">
-          <input type="text" name="search" placeholder="Search by username..." value="{{ request.args.get('search', '') }}" aria-label="Search by username" class="input" style="flex:1; padding:.5rem;">
-          <button type="submit" class="btn btn-outline">Search</button>
-          <button id="filter-toggle" type="button" class="btn btn-outline" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center;" title="Filter by role" aria-label="Filter by role">
-            <i class="fa fa-filter"></i>
-          </button>
-        </div>
-
-        <div id="role-filter" style="display:none; flex-wrap:wrap; gap:.5rem; background:#f7f7f7; padding:1rem; border-radius:6px;">
-          <select name="role" class="input" style="padding:.5rem;">
-            <option value="">All Roles</option>
-            <option value="administrator" {% if request.args.get('role') == 'administrator' %}selected{% endif %}>Admin</option>
-            <option value="sponsor" {% if request.args.get('role') == 'sponsor' %}selected{% endif %}>Sponsor</option>
-            <option value="driver" {% if request.args.get('role') == 'driver' %}selected{% endif %}>Driver</option>
-          </select>
-          <button type="submit" class="btn btn-outline">Apply</button>
-          <a href="{{ url_for('administrator_bp.accounts') }}" class="btn btn-outline">Reset</a>
-        </div>
-      </form>
-
-      <script>
-        document.addEventListener('DOMContentLoaded', function() {
-          const toggle = document.getElementById('filter-toggle');
-          const roleSection = document.getElementById('role-filter');
-          toggle.addEventListener('click', () => {
-            roleSection.style.display = roleSection.style.display === 'none' ? 'flex' : 'none';
-          });
-        });
-      </script>
-
-      {% if accounts %}
-        <table aria-describedby="active-users-caption">
-          <caption id="active-users-caption" class="text-muted" style="text-align:left; padding:.5rem 0;">
-            List of currently active users
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">Username</th>
-              <th scope="col">Name</th>
-              <th scope="col">Email</th>
-              <th scope="col">Type</th>
-              <th scope="col">Joined</th>
-              <th scope="col" style="width: 120px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% for user in accounts|sort(attribute='USER_TYPE') %}
-            <tr>
-              <td><strong>{{ user.USERNAME }}</strong></td>
-              <td>{{ user.FNAME }} {{ user.LNAME }}</td>
-              <td>{{ user.EMAIL }}</td>
-              <td>
-                <span class="badge">{{ user.USER_TYPE }}</span>
-              </td>
-              <td>{{ user.CREATED_AT.strftime('%Y-%m-%d %H:%M') }}</td>
-              <td>
-                <div style="display:flex; gap:.5rem; align-items:center;">
-                  {% if user.USER_CODE != current_user.USER_CODE %}
-                  <form method="POST" action="{{ url_for('impersonation_bp.start_impersonation', target_id=user.USER_CODE) }}" style="display:inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button class="btn btn-outline small" title="Impersonate this user">
-                      Impersonate
-                    </button>
-                  </form>
-                  {% endif %}
-
-                  <a
-                    href="{{ url_for('administrator_bp.edit_user', user_id=user.USER_CODE) }}"
-                    class="btn btn-outline"
-                    title="Edit user {{ user.USERNAME }}"
-                    aria-label="Edit user {{ user.USERNAME }}"
-                  >
-                    Edit
-                  </a>
-
-                  {% if user.USER_CODE != current_user.USER_CODE %}
-                  <form
-                    method="POST"
-                    action="{{ url_for('administrator_bp.disable_user', user_id=user.USER_CODE) }}"
-                    onsubmit="return confirm('WARNING: Are you sure you want to disable {{ user.USERNAME }}? This will set the account to inactive.');"
-                    style="display:inline-block; margin:0;"
-                  >
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button
-                      type="submit"
-                      class="btn"
-                      style="background: var(--error); color:#fff; border-color: transparent;"
-                      title="Disable user {{ user.USERNAME }}"
-                      aria-label="Disable user {{ user.USERNAME }}"
-                    >
-                      Disable
-                    </button>
-                  </form>
-                  {% endif %}
-                </div>
-              </td>
-            </tr>
-          {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <div class="box" role="status">
-          <p class="text-muted" style="margin:0;">No active users found.</p>
-        </div>
-      {% endif %}
-    </div>
   </div>
 {% endblock %}
 

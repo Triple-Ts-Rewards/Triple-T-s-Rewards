@@ -1,26 +1,42 @@
 {% extends "base.html" %}
 {% block content %}
-  <h2>Two-Factor Authentication (TOTP) Setup</h2>
-
-  <p>Scan this QR code with Google Authenticator, Microsoft Authenticator, or Authy.</p>
-
-  <div style="margin: 1rem 0;">
-    <img alt="Authenticator QR Code"
-         src="{{ qr_data_url }}"
-         style="max-width:220px; border:1px solid #ccc; padding:8px; background:#fff;">
+  <div class="page-header">
+    <h1>Authenticator App Setup</h1>
+    <p class="text-muted" style="margin:0;">Scan the code or enter the key to pair your authenticator.</p>
   </div>
 
-  <p>If you can’t scan the QR code, enter this secret key manually:</p>
-  <pre style="font-size:1.1rem; padding:.5rem; background:#f7f7f7; border:1px solid #ddd; display:inline-block;">
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Pair Your Device</h2>
+    </div>
+    <div class="org-card-body" style="display:grid; gap:1rem; max-width:540px;">
+      <p>Scan this QR code with Google Authenticator, Microsoft Authenticator, or Authy.</p>
+      <div style="margin: 0 auto;">
+        <img alt="Authenticator QR Code"
+             src="{{ qr_data_url }}"
+             style="max-width:220px; border:1px solid var(--border); padding:8px; background:#fff; border-radius:12px;">
+      </div>
+      <p>If you can’t scan the QR code, enter this secret key manually:</p>
+      <pre style="font-size:1.1rem; padding:.75rem; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
 {{ secret }}
-  </pre>
+      </pre>
+    </div>
+  </div>
 
-  <form method="post" action="{{ url_for('auth.twofa_verify_setup') }}" style="margin-top:1rem;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="token">Enter the 6-digit code from your authenticator app:</label>
-    <input id="token" name="token" inputmode="numeric" pattern="\d{6}" maxlength="6" required>
-    <button type="submit" class="btn btn-primary">Verify & Enable 2FA</button>
-  </form>
-
-  <p class="muted" style="margin-top:1rem;">After verification, we’ll require a code at login.</p>
+  <div class="card-elevated" style="margin-top:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Verify</h2>
+    </div>
+    <div class="org-card-body">
+      <form method="post" action="{{ url_for('auth.twofa_verify_setup') }}" style="display:grid; gap:1rem; max-width:360px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label for="token">Enter the 6-digit code from your authenticator app</label>
+          <input id="token" name="token" class="input" inputmode="numeric" pattern="\d{6}" maxlength="6" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Verify & Enable 2FA</button>
+      </form>
+      <p class="text-muted" style="margin-top:1rem;">After verification, we’ll require a code at login.</p>
+    </div>
+  </div>
 {% endblock %}

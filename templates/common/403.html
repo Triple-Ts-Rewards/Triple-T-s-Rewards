@@ -1,15 +1,20 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Access Denied</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <div class="box">
-        <h2>Forbidden</h2>
-        <p>You don’t have permission to access this page.</p>
-        <a href="{{ url_for('auth.login') }}">Back to Login</a>
+{% extends "base.html" %}
+
+{% block title %}Access Denied{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Forbidden</h1>
+    <p class="text-muted" style="margin:0;">You don’t have permission to access this page.</p>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>What’s Next?</h2>
     </div>
-</body>
-</html>
+    <div class="org-card-body" style="text-align:center;">
+      <p class="text-muted">If you believe this is a mistake, contact an administrator or try signing in with a different account.</p>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary" style="margin-top:1rem;">Back to Login</a>
+    </div>
+  </div>
+{% endblock %}

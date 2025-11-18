@@ -7,37 +7,40 @@
 {% endblock %}
 
 {% block content %}
-  <div class="container">
-    <div class="card">
-      <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:1rem;">
-        <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline" aria-label="Back to Sponsor Dashboard">
-          ← Back
-        </a>
-        <h1 style="margin:0;">Add New Driver</h1>
+  <div class="page-header">
+      <h1>Add New Driver</h1>
+      <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline" aria-label="Back to Sponsor Dashboard">← Back</a>
+  </div>
+
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Driver Details</h2>
       </div>
-      <form method="POST" novalidate>
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <div class="form-group">
-          <label for="username">Username</label>
-          <input id="username" name="username" type="text" required autocomplete="username">
-        </div>
+      <div class="org-card-body">
+        <form method="POST" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <div class="form-group">
-          <label for="name">Name</label>
-          <input id="name" name="name" type="text" required autocomplete="name">
-        </div>
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" required autocomplete="username">
+          </div>
 
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input id="email" name="email" type="email" required autocomplete="email">
-        </div>
+          <div class="form-group">
+            <label for="name">Name</label>
+            <input id="name" name="name" type="text" required autocomplete="name">
+          </div>
 
-        <button type="submit" class="btn btn-primary" aria-label="Create driver">
-          Create Driver
-        </button>
-      </form>
-    </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" required autocomplete="email">
+          </div>
+
+          <button type="submit" class="btn btn-primary" aria-label="Create driver">
+            Create Driver
+          </button>
+        </form>
+      </div>
   </div>
 {% endblock %}
 

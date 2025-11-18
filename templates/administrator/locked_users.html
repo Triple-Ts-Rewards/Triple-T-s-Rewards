@@ -7,74 +7,84 @@
 {% endblock %}
 
 {% block content %}
-  <div class="container">
-    <div class="card">
-      <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:1rem;">
-        <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline" aria-label="Back to Administrator Dashboard">
-          ← Back
-        </a>
-        <h1 style="margin:0;">Locked Users</h1>
-        <div style="flex:1;"></div>
-
-        {# Unlock All (risky bulk action -> danger/warning styling) #}
-        <form action="{{ url_for('administrator_bp.unlock_all') }}" method="POST"
-              onsubmit="return confirm('WARNING: Unlock ALL users? This will remove lockout for every locked account.');"
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Administrator</p>
+      <h1>Locked Users</h1>
+      <p class="text-muted" style="margin:0;">Unlock accounts that hit lockout thresholds or were paused manually.</p>
+    </div>
+    <div class="dashboard-actions" style="gap:0.75rem;">
+      <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline">← Dashboard</a>
+      {% if locked_users %}
+        <form action="{{ url_for('administrator_bp.unlock_all') }}"
+              method="POST"
+              onsubmit="return confirm('Unlock ALL users? This removes lockout for every account.');"
               style="margin:0;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit"
-                  class="btn btn-danger"
-                  aria-label="Unlock all locked users">
-            Unlock All
-          </button>
+          <button type="submit" class="btn btn-danger">Unlock All</button>
         </form>
-      </div>
+      {% endif %}
+    </div>
+  </div>
 
-      {% if locked_users %}
-        <table aria-describedby="locked-users-caption">
+  {% if locked_users %}
+    <div class="card-elevated">
+      <div class="card-header-accent" style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
+        <div>
+          <h2>Locked Accounts</h2>
+          <p class="text-muted" style="margin:0;">Review attempts, confirm users, and unlock when appropriate.</p>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Locked</span>
+          <span class="metric-value">{{ locked_users|length }}</span>
+        </div>
+      </div>
+      <div class="org-card-body" style="overflow:auto;">
+        <table class="data-table" aria-describedby="locked-users-caption">
           <caption id="locked-users-caption" class="text-muted" style="text-align:left; padding:.5rem 0;">
             Users currently locked out
           </caption>
           <thead>
             <tr>
-              <th scope="col">Username</th>
+              <th scope="col">User</th>
               <th scope="col">Locked Since</th>
-              <th scope="col" style="width: 140px;">Actions</th>
+              <th scope="col" style="width:140px;">Actions</th>
             </tr>
           </thead>
           <tbody>
-          {% for user in locked_users %}
-            <tr>
-              <td>
-                <div><strong>{{ user.USERNAME }}</strong></div>
-                <div class="text-muted" style="font-size:.9rem;">
-                  {{ user.FNAME }} {{ user.LNAME }} · {{ user.EMAIL }}
-                </div>
-              </td>
-              <td>{{ user.LOCKOUT_TIME.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-              <td>
-                <form action="{{ url_for('administrator_bp.unlock', user_id=user.USER_CODE) }}"
-                      method="POST"
-                      onsubmit="return confirm('Unlock {{ user.USERNAME }}?');"
-                      style="display:inline-block; margin:0;">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit"
-                          class="btn btn-success"
-                          aria-label="Unlock user {{ user.USERNAME }}">
-                    Unlock
-                  </button>
-                </form>
-              </td>
-            </tr>
-          {% endfor %}
+            {% for user in locked_users %}
+              <tr>
+                <td>
+                  <div><strong>{{ user.USERNAME }}</strong></div>
+                  <div class="text-muted" style="font-size:0.9rem;">{{ user.FNAME }} {{ user.LNAME }} · {{ user.EMAIL }}</div>
+                </td>
+                <td>{{ user.LOCKOUT_TIME.strftime('%Y-%m-%d %H:%M:%S') if user.LOCKOUT_TIME else '—' }}</td>
+                <td>
+                  <form action="{{ url_for('administrator_bp.unlock', user_id=user.USER_CODE) }}"
+                        method="POST"
+                        onsubmit="return confirm('Unlock {{ user.USERNAME }}?');"
+                        style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-success">Unlock</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
           </tbody>
         </table>
-      {% else %}
-        <div class="box" role="status">
-          <p class="text-muted" style="margin:0;">No users are currently locked out.</p>
-        </div>
-      {% endif %}
+      </div>
     </div>
-  </div>
+  {% else %}
+    <div class="card-elevated">
+      <div class="card-header-accent">
+        <h2>Locked Accounts</h2>
+      </div>
+      <div class="org-card-body" style="text-align:center;">
+        <p class="text-muted" style="margin-bottom:1rem;">All accounts are currently active. Check back after new lockout events.</p>
+        <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+      </div>
+    </div>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}

@@ -1,7 +1,7 @@
 # triple-ts-rewards/triple-t-s-rewards/Triple-T-s-Rewards-72ca7a46f1915a7f669f3692e9b77d23b248eaee/driver/routes.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
-from common.decorators import role_required
+from common.decorators import role_required, unauthenticated_only
 from common.logging import DRIVER_POINTS, log_audit_event, LOGIN_EVENT
 from models import Role, AuditLog, User, db, Sponsor, DriverApplication, Address, StoreSettings, Driver, Notification, LOCKOUT_ATTEMPTS, Organization, DriverSponsorAssociation
 from extensions import bcrypt
@@ -57,7 +57,7 @@ def login():
                     # Log the error but don't fail the login process
                     log_audit_event("SECURITY_NOTIFICATION_FAILED", f"Failed to send security notification to user {user.USERNAME}: {str(e)}")
             
-            return render_template('driver/login.html')
+            return render_template('common/login.html')
         
         # On successful login
         user.clear_failed_attempts()
@@ -68,7 +68,7 @@ def login():
         return redirect(url_for('driver_bp.dashboard'))
 
     # Looks inside templates/driver/login.html
-    return render_template('driver/login.html')
+    return render_template('common/login.html')
 
 # Dashboard
 @driver_bp.route('/dashboard')
@@ -221,7 +221,6 @@ def change_password():
 
     return render_template('driver/update_info.html', user=current_user)
 
-# Driver Application
 @driver_bp.route("/driver_app", methods=["GET", "POST"])
 @login_required
 def apply_driver():
@@ -230,32 +229,46 @@ def apply_driver():
 
     if request.method == "POST":
         org_id = request.form["org_id"]
-        reason = request.form.get("reason", "")
-        
-        driver_profile = Driver.query.get(current_user.USER_CODE)
-        license_number = driver_profile.LICENSE_NUMBER if driver_profile else None
+        reason = request.form.get("reason", "").strip()
 
+        driver_profile = Driver.query.get(current_user.USER_CODE)
+        license_number = driver_profile.LICENSE_NUMBER if driver_profile else None  # fine to leave, even if unused
+
+        # Just grab any existing application for this org+driver
         existing = DriverApplication.query.filter_by(
             DRIVER_ID=current_user.USER_CODE,
             ORG_ID=org_id
         ).first()
 
+        # Case 1: already has a pending app → block
+        if existing and existing.STATUS == "Pending":
+            flash("You already have a pending application to this organization.", "warning")
+            return redirect(url_for("driver_bp.dashboard"))
+
+        # Case 2: previously Accepted / Rejected / Dropped → reuse that row as a new pending app
         if existing:
-            flash("You already applied to this organization.", "warning")
-        else:
-            application = DriverApplication(
-                DRIVER_ID=current_user.USER_CODE,
-                ORG_ID=org_id,
-                REASON=reason,
-                STATUS="Pending"
-            )
-            db.session.add(application)
+            existing.STATUS = "Pending"
+            existing.REASON = reason
+            # if your model has UPDATED_AT, you *can* set it here, but only if it exists:
+            # existing.UPDATED_AT = datetime.utcnow()
             db.session.commit()
-            flash("Application submitted successfully! Await sponsor review.", "success")
+            flash("Application resubmitted successfully! Await sponsor review.", "success")
+            return redirect(url_for("driver_bp.dashboard"))
+
+        # Case 3: no prior application → create fresh
+        application = DriverApplication(
+            DRIVER_ID=current_user.USER_CODE,
+            ORG_ID=org_id,
+            REASON=reason,
+            STATUS="Pending"
+        )
+        db.session.add(application)
+        db.session.commit()
+        flash("Application submitted successfully! Await sponsor review.", "success")
         return redirect(url_for("driver_bp.dashboard"))
 
+    # GET: show the form
     return render_template("driver/driver_app.html", organizations=organizations)
-
 # Address Management
 @driver_bp.route('/addresses')
 @role_required(Role.DRIVER, allow_admin=True)
@@ -366,3 +379,119 @@ def redirect_to_cart():
         # If no organizations are found, send them to the application page with a helpful message.
         flash("You must join a sponsor's organization to have a cart.", "info")
         return redirect(url_for('driver_bp.apply_driver'))
+
+# Sponsor Information Routes
+@driver_bp.route('/sponsor_info')
+@role_required(Role.DRIVER)
+def sponsor_info_select():
+    """Display page for driver to select which organization's sponsors to view"""
+    # Get all organizations the driver is associated with
+    associations = DriverSponsorAssociation.query.filter_by(driver_id=current_user.USER_CODE).all()
+    
+    if not associations:
+        flash("You are not currently associated with any organizations.", "info")
+        return redirect(url_for('driver_bp.dashboard'))
+    
+    return render_template('driver/sponsor_info_select.html', associations=associations)
+
+@driver_bp.route('/sponsor_info/<int:org_id>')
+@role_required(Role.DRIVER)
+def sponsor_info_details(org_id):
+    """Display sponsor contact information for a specific organization"""
+    # Verify the driver is associated with this organization
+    association = DriverSponsorAssociation.query.filter_by(
+        driver_id=current_user.USER_CODE, 
+        ORG_ID=org_id
+    ).first()
+    
+    if not association:
+        flash("You do not have access to this organization's information.", "danger")
+        return redirect(url_for('driver_bp.sponsor_info_select'))
+    
+    # Get the organization
+    organization = Organization.query.get_or_404(org_id)
+    
+    # Get all sponsors in this organization with their user information
+    sponsors = db.session.query(Sponsor, User).join(
+        User, Sponsor.USER_CODE == User.USER_CODE
+    ).filter(Sponsor.ORG_ID == org_id).all()
+    
+    return render_template('driver/sponsor_info_details.html', 
+                         organization=organization, 
+                         sponsors=sponsors,
+                         driver_association=association)
+ 
+@driver_bp.route('/register', methods=['POST'])
+@unauthenticated_only(redirect_to='driver_bp.dashboard')
+def register_driver():
+    
+    form_data = request.form
+    
+    # Check for existing Username/Email
+    if User.query.filter_by(USERNAME=form_data['username']).first():
+        flash('Username is already taken.', 'danger')
+        return redirect(url_for('auth_bp.signup_page')) # assuming auth_bp handles the GET route
+    if User.query.filter_by(EMAIL=form_data['email']).first():
+        flash('Email address is already in use.', 'danger')
+        return redirect(url_for('auth_bp.signup_page'))
+
+    try:
+        # Hash Password
+        hashed_password = bcrypt.generate_password_hash(form_data['password']).decode('utf-8')
+
+        # Create User Record
+        new_user = User(
+            USERNAME=request.form.get('username'),
+            PASS=hashed_password,
+            USER_TYPE=Role.DRIVER, # Explicitly set as 'DRIVER'
+            EMAIL=request.form.get('email'),
+            FNAME=request.form.get('fname'),
+            LNAME=request.form.get('lname'),
+            PHONE=request.form.get('phone'),
+            IS_ACTIVE=True, 
+            IS_LOCKED_OUT=False,
+            wants_point_notifications=True,
+            wants_order_notifications=True,
+            wants_security_notifications=True,
+            CREATED_AT=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        )
+        db.session.add(new_user)
+        
+        # Flush the session to get the auto-generated USER_CODE
+        # This executes the INSERT for User, giving us the ID, but doesn't commit the transaction.
+        db.session.flush()
+        user_code = new_user.USER_CODE 
+        
+        # Create Driver Subtype Record (DRIVERS table)
+        new_driver = Driver(DRIVER_ID=new_user.USER_CODE, LICENSE_NUMBER=request.form.get('license_number'))
+
+        db.session.add(new_driver)
+        
+        # Create Address Record (ADDRESSES table)
+        new_address = Address(
+            user_id=user_code,
+            street=form_data['street'],
+            city=form_data['city'],
+            state=form_data['state'],
+            zip_code=form_data['zip_code'],
+            is_default=True
+        )
+        db.session.add(new_address)
+
+        # Commit all records in one transaction
+        db.session.commit()
+        
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+        log_audit_event("DRIVER_REGISTER", f"Driver account created: user={form_data['username']} code={user_code} ip={ip}")
+
+        flash('Driver account created successfully! Please log in.', 'success')
+        return redirect(url_for('auth.login'))# Redirect to the driver login page
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error during driver registration: {e}")
+        # Log the full exception for debugging
+        log_audit_event("DRIVER_REG_ERROR", f"Error creating account for {form_data['username']}: {str(e)}")
+        flash('An error occurred during registration. Please try again.', 'danger')
+        # Redirect back to the form
+        return redirect(url_for('auth.signup_page'))

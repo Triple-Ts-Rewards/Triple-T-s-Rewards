@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Select Organization - Sponsor Information{% endblock %}
+
+{% block styles %}
+{{ super() }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 org-selection-container">
+            <div class="card card-elevated">
+                <div class="card-header card-header-accent">
+                    <h2 class="mb-0">
+                        <i class="fas fa-building me-2" aria-hidden="true"></i>
+                        Select Organization
+                    </h2>
+                </div>
+                <div class="card-body org-card-body">
+                    <p class="intro-text">
+                        Choose which organization's sponsor information you would like to view. 
+                        This will show you contact details for all sponsors in that organization.
+                    </p>
+
+                    {% if associations %}
+                        <div class="org-cards-container" role="list" aria-label="Organizations you can view sponsor information for">
+                            {% for assoc in associations %}
+                                <a href="{{ url_for('driver_bp.sponsor_info_details', org_id=assoc.ORG_ID) }}"
+                                   class="list-group-item list-group-item-action card-interactive d-flex justify-content-between align-items-center"
+                                   role="listitem"
+                                   aria-label="View sponsor information for {{ assoc.organization.ORG_NAME }}, {{ assoc.points }} points available"
+                                   tabindex="0">
+                                    <div class="flex-grow-1">
+                                        <h3 class="org-name">
+                                            <i class="fas fa-building org-icon" aria-hidden="true"></i>
+                                            {{ assoc.organization.ORG_NAME }}
+                                        </h3>
+                                        <p class="action-hint mb-0">
+                                            Click to view sponsor contact information
+                                        </p>
+                                    </div>
+                                    <div class="points-section">
+                                        <span class="badge badge-accent" aria-label="{{ assoc.points }} points available">
+                                            {{ assoc.points }} points
+                                        </span>
+                                        <span class="balance-label">Your balance</span>
+                                    </div>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state" role="alert">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-info-circle" aria-hidden="true"></i>
+                            </div>
+                            <p class="empty-state-heading">
+                                You are not currently associated with any organizations.
+                            </p>
+                            <a href="{{ url_for('driver_bp.apply_driver') }}"
+                               class="empty-state-action"
+                               aria-label="Apply to join an organization to view sponsor information">
+                                Apply to join an organization
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer org-footer-dark">
+                    <a href="{{ url_for('driver_bp.dashboard') }}" 
+                       class="btn btn-outline"
+                       aria-label="Return to driver dashboard">
+                        <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>
+                        Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

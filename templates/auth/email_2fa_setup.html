@@ -1,12 +1,24 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Enable Email 2FA</h2>
-<p>We sent a 6-digit code to <b>{{ current_user.EMAIL }}</b>. Enter it below.</p>
-<form method="post" action="{{ url_for('auth.email_2fa_verify') }}">
-  {{ csrf_token() }}
-  <label>Code</label>
-  <input name="code" inputmode="numeric" pattern="\d{6}" maxlength="6" required>
-  <button class="btn" type="submit">Verify</button>
-</form>
-<p class="muted" style="margin-top:.5rem;">Didn’t get it? <a href="{{ url_for('auth.email_2fa_setup') }}">Resend</a></p>
+  <div class="page-header">
+    <h1>Enable Email 2FA</h1>
+    <p class="text-muted" style="margin:0;">Enter the 6-digit code sent to <strong>{{ current_user.EMAIL }}</strong>.</p>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Verification</h2>
+    </div>
+    <div class="org-card-body">
+      <form method="post" action="{{ url_for('auth.email_2fa_verify') }}" style="display:grid; gap:1rem; max-width:360px;">
+        {{ csrf_token() }}
+        <div class="form-group">
+          <label for="code">Code</label>
+          <input id="code" name="code" class="input" inputmode="numeric" pattern="\d{6}" maxlength="6" required>
+        </div>
+        <button class="btn btn-primary" type="submit">Verify</button>
+      </form>
+      <p class="text-muted" style="margin-top:1rem;">Didn’t get it? <a href="{{ url_for('auth.email_2fa_setup') }}">Resend code</a>.</p>
+    </div>
+  </div>
 {% endblock %}

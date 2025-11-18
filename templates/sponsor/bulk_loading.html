@@ -3,99 +3,105 @@
 {% block title %}Sponsor Bulk Loading{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Bulk Loading - Sponsor Mode</h2>
-    
-    <div class="alert alert-info">
-        <h5>Sponsor Bulk Loading Restrictions:</h5>
-        <ul>
-            <li>You can only create <strong>Drivers (D)</strong> and <strong>Sponsors (S)</strong></li>
-            <li>You cannot create Organizations (O) - only administrators can do this</li>
-            <li>All users created will be associated with your organization: <strong>{{ current_user.sponsor.ORG_NAME if current_user.sponsor else 'Unknown' }}</strong></li>
-            <li>Multiple sponsors per organization are allowed</li>
-        </ul>
-    </div>
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h4>Upload Bulk Loading File</h4>
-                </div>
-                <div class="card-body">
-                    <form method="POST" enctype="multipart/form-data">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="mb-3">
-                            <label for="file" class="form-label">Select File (.txt only):</label>
-                            <input type="file" class="form-control" id="file" name="file" accept=".txt" required>
-                            <div class="form-text">Upload a text file with pipe-delimited records.</div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Process File</button>
-                        <a href="{{ url_for('bulk_loading_bp.download_template') }}" class="btn btn-secondary">Download Template</a>
-                    </form>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5>File Format</h5>
-                </div>
-                <div class="card-body">
-                    <p><strong>Sponsor Record:</strong></p>
-                    <code>S|FirstName|LastName|Email</code>
-                    
-                    <p class="mt-3"><strong>Driver Record:</strong></p>
-                    <code>D|FirstName|LastName|Email</code>
-                    
-                    <div class="mt-3">
-                        <small class="text-muted">
-                            <strong>Note:</strong> Organization names are not needed in sponsor mode as all users will be created under your organization.
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+  <div class="page-header">
+      <h1>Bulk Loading - Sponsor Mode</h1>
+      <p class="text-muted" style="margin: 0;">Upload driver and sponsor accounts directly into your organization.</p>
+  </div>
 
-    {% if results %}
-    <div class="card mt-4">
-            {% if results.log_entries %}
-            <div class="mt-4">
-                <h5>Processing Log</h5>
-                <div class="table-responsive">
-                    <table class="table table-sm table-striped">
-                        <thead>
-                            <tr>
-                                <th>Line</th>
-                                <th>Type</th>
-                                <th>Status</th>
-                                <th>Details</th>
-                                <th>Message</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for entry in results.log_entries %}
-                            <tr class="{{ 'table-success' if entry.status == 'Success' else 'table-danger' }}">
-                                <td>{{ entry.line_num }}</td>
-                                <td>{{ entry.record_type }}</td>
-                                <td>{{ entry.status }}</td>
-                                <td>{{ entry.details }}</td>
-                                <td>{{ entry.message }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-    {% endif %}
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Restrictions & Notes</h2>
+      </div>
+      <div class="org-card-body">
+          <ul>
+              <li>You can only create <strong>Drivers (D)</strong> and <strong>Sponsors (S)</strong>.</li>
+              <li>Organizations must be created by administrators.</li>
+              <li>All users will be associated with <strong>{{ current_user.sponsor.ORG_NAME if current_user.sponsor else 'your organization' }}</strong>.</li>
+              <li>Multiple sponsor accounts per organization are allowed.</li>
+          </ul>
+      </div>
+  </div>
 
-    <div class="mt-4">
-        <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
-        <a href="{{ url_for('bulk_loading_bp.view_logs') }}" class="btn btn-outline-info">View All Logs</a>
-    </div>
-</div>
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Upload Bulk Loading File</h2>
+      </div>
+      <div class="org-card-body">
+          <form method="POST" enctype="multipart/form-data">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+              <div class="form-group">
+                  <label for="file">Select File (.txt only)</label>
+                  <input type="file" id="file" name="file" accept=".txt" required>
+                  <small class="text-muted">Upload a text file with pipe-delimited records.</small>
+              </div>
+
+              <div class="dashboard-actions" style="margin-top: 1.5rem;">
+                  <button type="submit" class="btn btn-primary">Process File</button>
+                  <a href="{{ url_for('bulk_loading_bp.download_template') }}" class="btn btn-outline">Download Template</a>
+              </div>
+          </form>
+      </div>
+  </div>
+
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>File Format</h2>
+      </div>
+      <div class="org-card-body">
+          <p><strong>Sponsor Record:</strong></p>
+          <code>S|FirstName|LastName|Email</code>
+
+          <p style="margin-top: 1rem;"><strong>Driver Record:</strong></p>
+          <code>D|FirstName|LastName|Email</code>
+
+          <p class="text-muted" style="margin-top: 1rem;">
+              Organization names are not needed in sponsor mode; all users are created under your organization automatically.
+          </p>
+      </div>
+  </div>
+
+  {% if results and results.log_entries %}
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Processing Log</h2>
+      </div>
+      <div class="org-card-body">
+          <div class="table-responsive">
+              <table>
+                  <thead>
+                      <tr>
+                          <th>Line</th>
+                          <th>Type</th>
+                          <th>Status</th>
+                          <th>Details</th>
+                          <th>Message</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {% for entry in results.log_entries %}
+                      <tr>
+                          <td>{{ entry.line_num }}</td>
+                          <td>{{ entry.record_type }}</td>
+                          <td>{{ entry.status }}</td>
+                          <td>{{ entry.details }}</td>
+                          <td>{{ entry.message }}</td>
+                      </tr>
+                      {% endfor %}
+                  </tbody>
+              </table>
+          </div>
+      </div>
+  </div>
+  {% endif %}
+
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Next Steps</h2>
+      </div>
+      <div class="org-card-body" style="display:flex; gap:1rem; flex-wrap:wrap;">
+          <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-outline">Back to Dashboard</a>
+          <a href="{{ url_for('bulk_loading_bp.view_logs') }}" class="btn btn-outline">View All Logs</a>
+      </div>
+  </div>
 {% endblock %}
