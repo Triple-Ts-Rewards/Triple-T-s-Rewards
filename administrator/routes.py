@@ -5,10 +5,7 @@ from common.decorators import role_required
 from models import User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS
 from extensions import db
 from sqlalchemy import or_
-from common.logging import (LOGIN_EVENT,
-    SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT,
-    DRIVER_POINTS)
-from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event)
+from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL)
 from datetime import datetime, timedelta
 from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization
 import csv
@@ -339,6 +336,7 @@ def unlock(user_id):
     user.clear_failed_attempts()
     user.IS_LOCKED_OUT = 0
     db.session.commit()
+    log_audit_event(ACCOUNT_UNLOCKED, f"admin={current_user.USERNAME} unlocked_user={user.USERNAME} code={user.USER_CODE}")
     flash(f'Account for {user.USERNAME} has been unlocked.', 'success')
     return redirect(url_for('administrator_bp.locked_users'))
 
@@ -351,6 +349,7 @@ def unlock_all():
         user.clear_failed_attempts()
         user.IS_LOCKED_OUT = 0
     db.session.commit()
+    log_audit_event(ACCOUNT_UNLOCKED_ALL, f"admin={current_user.USERNAME} unlocked_all_accounts")
     flash('All locked accounts have been unlocked.', 'success')
     return redirect(url_for('administrator_bp.locked_users'))
 
@@ -468,6 +467,7 @@ def disable_user(user_id):
         user.IS_LOCKED_OUT = 0
         user.clear_failed_attempts()
         db.session.commit()
+        log_audit_event(ACCOUNT_DISABLED, f"admin={current_user.USERNAME} disabled_user={user.USERNAME} code={user.USER_CODE}")
         flash(f'User **{user.USERNAME}** has been disabled.', 'info')
         
     return redirect(url_for('administrator_bp.accounts'))
@@ -483,6 +483,7 @@ def enable_user(user_id):
         user.IS_ACTIVE = 1
         user.clear_failed_attempts()
         db.session.commit()
+        log_audit_event(ACCOUNT_ENABLED, f"admin={current_user.USERNAME} enabled_user={user.USERNAME} code={user.USER_CODE}")
         flash(f'User **{user.USERNAME}** has been enabled.', 'success')
         
     return redirect(url_for('administrator_bp.accounts'))
@@ -552,7 +553,7 @@ def set_timeout(user_id):
     user.LOCKED_REASON = "admin"
     db.session.commit()
     
-    log_audit_event("ADMIN_TIMEOUT", f"User {user.USERNAME} timed out for {minutes} minutes.")
+    log_audit_event(ADMIN_TIMEOUT_EVENT, f"User {user.USERNAME} timed out for {minutes} minutes.")
     flash(f"User {user.USERNAME} has been timed out for {minutes} minutes.", "info")
     return redirect(url_for("administrator_bp.timeout_users"))
 
@@ -565,6 +566,6 @@ def clear_timeout(user_id):
     user.IS_LOCKED_OUT = 0
     user.LOCKED_REASON = None
     db.session.commit()
-    log_audit_event("ADMIN_CLEAR_TIMEOUT", f"Timeout cleared for user {user.USERNAME}.")
+    log_audit_event(ADMIN_CLEAR_TIMEOUT, f"Timeout cleared for user {user.USERNAME}.")
     flash(f"Timeout cleared for user {user.USERNAME}.", "success")
     return redirect(url_for("administrator_bp.timeout_users"))
