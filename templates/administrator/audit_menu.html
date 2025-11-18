@@ -46,6 +46,13 @@
           <a href="{{ url_for('administrator_bp.view_audit_logs', event_type='bulk_load') }}" class="btn btn-outline">View</a>
         </td>
       </tr>
+      <tr>
+        <td>Access Changes</td>
+        <td>Account disables/enables, timeouts, and unlocks.</td>
+        <td class="actions">
+          <a href="{{ url_for('administrator_bp.view_audit_logs', event_type='access_changes') }}" class="btn btn-outline">View</a>
+        </td>
+      </tr>
     </tbody>
   </table>
 
