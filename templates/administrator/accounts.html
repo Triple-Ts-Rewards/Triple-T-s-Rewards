@@ -1,3 +1,6 @@
+Administrator/accounts.html
+
+
 {% extends "base.html" %}
 
 {% block title %}Active Users - TTT Rewards{% endblock %}
@@ -115,6 +118,13 @@
                       </form>
                       {% endif %}
 
+                      <form method="POST" action="{{ url_for('administrator_bp.delete_user', user_id=user.USER_CODE) }}"
+                        style="display:inline;"
+                        onsubmit="return confirm('WARNING: This will permanently delete {{ user.USERNAME }}. Continue?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="table-btn table-btn-danger">Delete</button>
+                      </form>
+
                     </div>
                   </td>
                 </tr>
@@ -139,3 +149,4 @@
   {{ super() }}
   {# No page-specific JS needed #}
 {% endblock %}
+

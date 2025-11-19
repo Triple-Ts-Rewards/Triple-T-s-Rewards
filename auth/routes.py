@@ -207,6 +207,11 @@ def login():
             log_audit_event(LOGIN_EVENT, f"FAIL user={username} ip={ip}")
             return render_template("common/login.html")
         
+        if not user.IS_ACTIVE:
+            flash("Account is inactive. Please contact support.", "danger")
+            log_audit_event(LOGIN_EVENT, f"FAIL user={user.USERNAME} ip={ip} reason=inactive")
+            return render_template("common/login.html")
+        
         if user.is_account_locked():
             if user.LOCKED_REASON == "admin":
                 until = user.LOCKOUT_TIME.strftime("%Y-%m-%d %H:%M:%S") if user.LOCKOUT_TIME else "later"
