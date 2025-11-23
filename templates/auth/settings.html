@@ -1,8 +1,119 @@
 {% extends "base.html" %}
 {% block content %}
-  <h2>Account Settings</h2>
+  <div class="page-header">
+    <h1>Two-Factor Settings</h1>
+    <p class="text-muted" style="margin:0;">Secure your account with one or both login verifications.</p>
+  </div>
 
-  <a href="{{ url_for('auth.twofa_setup') }}" class="btn btn-dash">Enable Two-Factor Authentication</a>
-    <!-- you can add more links like change password, notifications, etc. -->
-  </ul>
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Available Methods</h2>
+    </div>
+    <div class="org-card-body" style="display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(280px,1fr));">
+      <div class="card-elevated" style="padding:1.5rem; box-shadow:none; border:1px solid var(--border);">
+        <h3>Authenticator App (TOTP)</h3>
+        {% if current_user.TOTP_SECRET %}
+          <p><strong>Status:</strong> Enabled ✅</p>
+          <form method="post" action="{{ url_for('auth.disable_totp') }}" style="margin-top:1rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-outline" type="submit">Disable TOTP</button>
+          </form>
+        {% else %}
+          <p>Protect your account using an authenticator app like Google Authenticator or Duo.</p>
+          <a class="btn btn-primary" href="{{ url_for('auth.twofa_setup') }}">Set Up Authenticator App</a>
+        {% endif %}
+      </div>
+
+      <div class="card-elevated" style="padding:1.5rem; box-shadow:none; border:1px solid var(--border);">
+        <h3>Email Verification</h3>
+        {% if current_user.EMAIL_2FA_ENABLED %}
+          <p><strong>Status:</strong> Enabled ✅</p>
+          <form method="post" action="{{ url_for('auth.email_2fa_disable') }}" style="margin-top:1rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-outline" type="submit">Disable Email 2FA</button>
+          </form>
+        {% else %}
+          <p>Receive a one-time code in your inbox whenever you sign in.</p>
+          <form method="post" action="{{ url_for('auth.email_2fa_enable') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-primary" type="submit">Enable Email 2FA</button>
+          </form>
+        {% endif %}
+      </div>
+
+      {% if current_user.USER_TYPE == 'sponsor' or current_user.USER_TYPE == 'driver' %}
+      <div class="card-elevated" style="padding:1.5rem; box-shadow:none; border:1px solid var(--border);">
+        <h3>Notification Preferences</h3>
+        <p>Manage the alerts you receive via email.</p>
+        
+        <form method="post" action="{{ url_for('auth.update_notifications') }}" style="margin-top:1rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            {% if current_user.USER_TYPE == 'driver' %}
+            <div style="margin-bottom: 1rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:500;">
+                    <input type="checkbox" name="wants_point_notifications" 
+                           style="width:1.2rem; height:1.2rem;"
+                           {% if current_user.wants_point_notifications %}checked{% endif %}>
+                    <span>Point Notifications</span>
+                </label>
+                <small class="text-muted" style="display:block; margin-left: 2rem; margin-top:0.25rem;">
+                    Receive an alert when a sponsor awards or deducts points.
+                </small>
+            </div>
+            {% endif %}
+
+            <div style="margin-bottom: 1rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:500;">
+                    <input type="checkbox" name="wants_order_notifications" 
+                           style="width:1.2rem; height:1.2rem;"
+                           {% if current_user.wants_order_notifications %}checked{% endif %}>
+                    <span>Order Notifications</span>
+                </label>
+                <small class="text-muted" style="display:block; margin-left: 2rem; margin-top:0.25rem;">
+                    {% if current_user.USER_TYPE == 'sponsor' %}
+                        Receive an email when a driver purchases an item from your catalog.
+                    {% else %}
+                        Receive a notification when your order is placed (Driver).
+                    {% endif %}
+                </small>
+            </div>
+            
+            {% if current_user.USER_TYPE == 'driver' %}
+            <div style="margin-bottom: 1rem;">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:500;">
+                    <input type="checkbox" name="wants_security_notifications" 
+                           style="width:1.2rem; height:1.2rem;"
+                           {% if current_user.wants_security_notifications %}checked{% endif %}>
+                    <span>Security Notifications</span>
+                </label>
+                <small class="text-muted" style="display:block; margin-left: 2rem; margin-top:0.25rem;">
+                    Receive alerts for failed login attempts or password changes.
+                </small>
+            </div>
+            {% endif %}
+
+            <button class="btn btn-primary" type="submit">Save Preferences</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-elevated" style="margin-top:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Navigation</h2>
+    </div>
+    <div class="org-card-body" style="text-align:center;">
+      {% if current_user.USER_TYPE == 'admin' %}
+        <a class="btn btn-outline" href="{{ url_for('administrator_bp.dashboard') }}">← Back to Admin Dashboard</a>
+      {% elif current_user.USER_TYPE == 'sponsor' %}
+        <a class="btn btn-outline" href="{{ url_for('sponsor_bp.dashboard') }}">← Back to Sponsor Dashboard</a>
+      {% elif current_user.USER_TYPE == 'driver' %}
+        <a class="btn btn-outline" href="{{ url_for('driver_bp.dashboard') }}">← Back to Driver Dashboard</a>
+      {% else %}
+        <a class="btn btn-outline" href="{{ url_for('common.index') }}">← Back to Home</a>
+      {% endif %}
+    </div>
+  </div>
 {% endblock %}

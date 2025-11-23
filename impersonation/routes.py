@@ -19,10 +19,18 @@ def allowed_to_impersonate(target_user):
         if target_type != 'driver':
             return False
 
-        # Check association between sponsor and driver
+        # Get the sponsor's organization
+        if not current_user.sponsor or not current_user.sponsor.ORG_ID:
+            return False
+        
+        # Get the target user's driver profile
+        if not target_user.driver_profile:
+            return False
+
+        # Check association between the sponsor's organization and the driver
         association = DriverSponsorAssociation.query.filter_by(
-            driver_id=target_user.USER_CODE,
-            sponsor_id=current_user.USER_CODE
+            driver_id=target_user.driver_profile.DRIVER_ID,
+            ORG_ID=current_user.sponsor.ORG_ID
         ).first()
 
         return association is not None
@@ -46,8 +54,9 @@ def log_impersonation(actor_id, target_id, action):
 @login_required
 def start_impersonation(target_id):
     actor = current_user
-    if actor.USER_CODE == target_id:
-        flash("Cannot impersonate yourself.", "warning")
+    if actor.USER_CODE == target_id or actor.USERNAME == User.query.filter_by(USER_CODE=target_id).first().USERNAME:
+        flash("You cannot impersonate yourself.", "warning")
+        log_impersonation(actor.USER_CODE, actor.USER_CODE, 'self-impersonation-attempt')
         return redirect(request.referrer or url_for('common.index'))
 
     target = User.query.filter_by(USER_CODE=target_id).first_or_404()

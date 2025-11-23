@@ -1,19 +1,18 @@
 {% extends "base.html" %}
+
 {% block content %}
-<main class="app-main-content container">
-  <div class="apply-form">
-    <h2>Apply to a Sponsor</h2>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul class="flashes">
-          {% for category, message in messages %}
-            <li class="{{ category }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
+  <div class="page-header">
+      <h1>Apply to a Sponsor</h1>
+      <p class="text-muted" style="margin: 0;">Tell us which organization you want to join and why.</p>
+  </div>
 
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Application Form</h2>
+      </div>
+
+      <div class="org-card-body">
     <form method="POST" action="{{ url_for('driver_bp.apply_driver') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -36,6 +35,49 @@
         <a href="{{ url_for('driver_bp.dashboard') }}" class="btn btn-outline">Cancel</a>
       </div>
     </form>
+      </div>
   </div>
-</main>
+
+  {% if my_applications %}
+  <div class="card-elevated mt-4">
+      <div class="card-header-accent">
+          <h2>Your Applications</h2>
+      </div>
+      <div class="org-card-body">
+          <div class="table-responsive">
+              <table class="table table-striped">
+                  <thead>
+                      <tr>
+                          <th>Organization</th>
+                          <th>Status</th>
+                          <th>Reason</th>
+                          <th>Date Applied</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {% for app in my_applications %}
+                      <tr>
+                          <td>{{ app.organization.ORG_NAME }}</td>
+                          <td>
+                              {% if app.STATUS == 'Pending' %}
+                                  <span class="badge bg-warning text-dark">{{ app.STATUS }}</span>
+                              {% elif app.STATUS == 'Accepted' %}
+                                  <span class="badge bg-success">{{ app.STATUS }}</span>
+                              {% elif app.STATUS == 'Rejected' %}
+                                  <span class="badge bg-danger">{{ app.STATUS }}</span>
+                              {% else %}
+                                  <span class="badge bg-secondary">{{ app.STATUS }}</span>
+                              {% endif %}
+                          </td>
+                          <td>{{ app.REASON or 'No reason provided' }}</td>
+                          <td>{{ app.APPLIED_AT.strftime('%Y-%m-%d') }}</td>
+                      </tr>
+                      {% endfor %}
+                  </tbody>
+              </table>
+          </div>
+      </div>
+  </div>
+  {% endif %}
+
 {% endblock %}

@@ -1,16 +1,13 @@
+from urllib.parse import urlencode
 from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
 from flask_login import login_user, logout_user, login_required, current_user
 from common.decorators import role_required
 from models import User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS
 from extensions import db
 from sqlalchemy import or_
-from common.logging import (LOGIN_EVENT,
-    SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT,
-    DRIVER_POINTS)
-from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event)
-from datetime import datetime
+from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL)
 from datetime import datetime, timedelta
-from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog
+from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization, DriverApplication
 import csv
 from io import StringIO
 from audit_types import AUDIT_CATEGORIES
@@ -143,47 +140,74 @@ def dashboard():
 @administrator_bp.get('/audit_logs/view')
 @role_required(Role.ADMINISTRATOR, allow_admin=False)
 def view_audit_logs():
+    # category key from menu: "login", "driver_points", etc.
     category_key = (request.args.get("event_type") or "").strip()
 
     if category_key not in AUDIT_CATEGORIES:
         flash("Unknown audit log type.", "warning")
         return redirect(url_for("administrator_bp.audit_menu"))
 
-    start_str = request.args.get("start")
-    end_str   = request.args.get("end")
-
+    # ---- parse filters ----
     def parse_date(s):
         if not s:
             return None
-        for fmt in ("%m/%d/%Y", "%Y-%m-%d"):
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y"):
             try:
                 return datetime.strptime(s, fmt)
             except ValueError:
                 pass
         return None
 
+    start_str = request.args.get("start")
+    end_str   = request.args.get("end")
+    username  = (request.args.get("username") or "").strip()
+    contains  = (request.args.get("q") or "").strip()
+
     start_dt = parse_date(start_str)
     end_dt   = parse_date(end_str)
 
-    # Base query by category
-    if category_key == "bulk_load":
-        # Capture all known variants + any future "*bulk_load*"
-        q = AuditLog.query.filter(
-            or_(
-                AuditLog.EVENT_TYPE.in_(list(AUDIT_CATEGORIES["bulk_load"])),
-                AuditLog.EVENT_TYPE.ilike("bulk_load%"),
-                AuditLog.EVENT_TYPE.ilike("%_bulk_load%"),
-            )
-        )
-    else:
-        q = AuditLog.query.filter(AuditLog.EVENT_TYPE.in_(list(AUDIT_CATEGORIES[category_key])))
+    # ---- ALWAYS initialize q first ----
+    q = AuditLog.query
 
+    # limit to the event types in this category
+    event_types = list(AUDIT_CATEGORIES[category_key])
+    q = q.filter(AuditLog.EVENT_TYPE.in_(event_types))
+
+    # apply optional date filters
     if start_dt:
         q = q.filter(AuditLog.CREATED_AT >= start_dt)
     if end_dt:
+        # include entire end day
         q = q.filter(AuditLog.CREATED_AT < end_dt + timedelta(days=1))
 
-    logs = q.order_by(AuditLog.CREATED_AT.desc()).limit(500).all()
+    # optional username / contains (DETAILS) filters, if you store such info in DETAILS
+    if username:
+        # naive contains match; adapt to your schema as needed
+        q = q.filter(AuditLog.DETAILS.ilike(f"%{username}%"))
+    if contains:
+        q = q.filter(AuditLog.DETAILS.ilike(f"%{contains}%"))
+
+    # ---- pagination ----
+    try:
+        page = int(request.args.get("page", 1))
+    except ValueError:
+        page = 1
+    try:
+        per_page = int(request.args.get("per_page", 25))
+    except ValueError:
+        per_page = 25
+    per_page = max(1, min(per_page, 200))  # sane bounds
+
+    q = q.order_by(AuditLog.CREATED_AT.desc())
+    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+    logs = pagination.items
+
+    # ---- build pagination helper params for template ----
+    # base_url is the path; url_params_qs is the preserved query without page/per_page
+    base_url = url_for('administrator_bp.view_audit_logs')
+    url_params = request.args.to_dict()
+    url_params.pop("page", None)
+    url_params_qs = "&".join(f"{k}={v}" for k, v in url_params.items() if v)
 
     titles = {
         "login": "Login Activity",
@@ -196,11 +220,19 @@ def view_audit_logs():
 
     return render_template(
         "administrator/audit_list.html",
-        logs=logs,                       # <— make sure your template iterates 'logs'
+        # data
+        logs=logs,
         title=titles.get(category_key, "Audit Logs"),
         event_type=category_key,
-        start=start_str,
-        end=end_str,
+
+        # filters back into the template (so inputs keep their values)
+        start=start_str, end=end_str, username=username, q=contains,
+
+        # pagination context
+        pagination=pagination,
+        per_page=per_page,
+        base_url=base_url,
+        url_params_qs=url_params_qs,
     )
 # Logout
 @administrator_bp.route('/logout')
@@ -270,7 +302,16 @@ def add_user():
             driver = Driver(DRIVER_ID=new_user.USER_CODE, LICENSE_NUMBER="temp_license")
             db.session.add(driver)
         elif role == "sponsor":
-            sponsor = Sponsor(SPONSOR_ID=new_user.USER_CODE, ORG_NAME="Temp Org", STATUS="Pending")
+            # Create a temporary organization for this sponsor
+            temp_org = Organization(
+                ORG_NAME="Temp Organization - " + new_user.USERNAME,
+                STATUS="Pending",
+                CREATED_AT=datetime.utcnow()
+            )
+            db.session.add(temp_org)
+            db.session.flush()  # Get the ORG_ID
+            
+            sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=temp_org.ORG_ID)
             db.session.add(sponsor)
         elif role == "admin":
             admin = Admin(ADMIN_ID=new_user.USER_CODE)
@@ -295,6 +336,7 @@ def unlock(user_id):
     user.clear_failed_attempts()
     user.IS_LOCKED_OUT = 0
     db.session.commit()
+    log_audit_event(ACCOUNT_UNLOCKED, f"admin={current_user.USERNAME} unlocked_user={user.USERNAME} code={user.USER_CODE}")
     flash(f'Account for {user.USERNAME} has been unlocked.', 'success')
     return redirect(url_for('administrator_bp.locked_users'))
 
@@ -307,6 +349,7 @@ def unlock_all():
         user.clear_failed_attempts()
         user.IS_LOCKED_OUT = 0
     db.session.commit()
+    log_audit_event(ACCOUNT_UNLOCKED_ALL, f"admin={current_user.USERNAME} unlocked_all_accounts")
     flash('All locked accounts have been unlocked.', 'success')
     return redirect(url_for('administrator_bp.locked_users'))
 
@@ -424,6 +467,7 @@ def disable_user(user_id):
         user.IS_LOCKED_OUT = 0
         user.clear_failed_attempts()
         db.session.commit()
+        log_audit_event(ACCOUNT_DISABLED, f"admin={current_user.USERNAME} disabled_user={user.USERNAME} code={user.USER_CODE}")
         flash(f'User **{user.USERNAME}** has been disabled.', 'info')
         
     return redirect(url_for('administrator_bp.accounts'))
@@ -439,6 +483,7 @@ def enable_user(user_id):
         user.IS_ACTIVE = 1
         user.clear_failed_attempts()
         db.session.commit()
+        log_audit_event(ACCOUNT_ENABLED, f"admin={current_user.USERNAME} enabled_user={user.USERNAME} code={user.USER_CODE}")
         flash(f'User **{user.USERNAME}** has been enabled.', 'success')
         
     return redirect(url_for('administrator_bp.accounts'))
@@ -465,22 +510,21 @@ def reset_user_password(user_id):
 @login_required
 @role_required(Role.ADMINISTRATOR)
 def review_sponsors():
-    sponsors = Sponsor.query.filter_by(STATUS="Pending").all()
-    return render_template("administrator/review_sponsor.html", sponsors=sponsors)
+    # Get all organizations with pending status
+    pending_organizations = Organization.query.filter_by(STATUS="Pending").all()
+    return render_template("administrator/review_sponsor.html", organizations=pending_organizations)
 
-@administrator_bp.route("/sponsors/<int:sponsor_id>/<decision>")
+@administrator_bp.route("/sponsors/<int:ORG_ID>/<decision>", methods=["POST"])
 @login_required
 @role_required(Role.ADMINISTRATOR)
-def sponsor_decision(sponsor_id, decision):
-    sponsor = Sponsor.query.get_or_404(sponsor_id)
+def sponsor_decision(ORG_ID, decision):
+    organization = Organization.query.get_or_404(ORG_ID)
     if decision == "approve":
-        sponsor.STATUS = "Approved"
-        # Removed: if sponsor_user: sponsor_user.IS_ACTIVE = 1 
-        flash(f"Sponsor '{sponsor.ORG_NAME}' approved!", "success") 
+        organization.STATUS = "Approved"
+        flash(f"Organization '{organization.ORG_NAME}' approved!", "success") 
     elif decision == "reject":
-        sponsor.STATUS = "Rejected"
-        # Removed: if sponsor_user: sponsor_user.IS_ACTIVE = 0
-        flash(f"Sponsor '{sponsor.ORG_NAME}' rejected.", "warning") 
+        organization.STATUS = "Rejected"
+        flash(f"Organization '{organization.ORG_NAME}' rejected.", "warning") 
     else:
         flash("Invalid decision.", "danger")
         return redirect(url_for("administrator_bp.review_sponsors"))
@@ -509,7 +553,7 @@ def set_timeout(user_id):
     user.LOCKED_REASON = "admin"
     db.session.commit()
     
-    log_audit_event("ADMIN_TIMEOUT", f"User {user.USERNAME} timed out for {minutes} minutes.")
+    log_audit_event(ADMIN_TIMEOUT_EVENT, f"User {user.USERNAME} timed out for {minutes} minutes.")
     flash(f"User {user.USERNAME} has been timed out for {minutes} minutes.", "info")
     return redirect(url_for("administrator_bp.timeout_users"))
 
@@ -522,6 +566,27 @@ def clear_timeout(user_id):
     user.IS_LOCKED_OUT = 0
     user.LOCKED_REASON = None
     db.session.commit()
-    log_audit_event("ADMIN_CLEAR_TIMEOUT", f"Timeout cleared for user {user.USERNAME}.")
+    log_audit_event(ADMIN_CLEAR_TIMEOUT, f"Timeout cleared for user {user.USERNAME}.")
     flash(f"Timeout cleared for user {user.USERNAME}.", "success")
     return redirect(url_for("administrator_bp.timeout_users"))
+
+
+@administrator_bp.route("/application-oversight")
+@login_required
+@role_required(Role.ADMINISTRATOR)
+def application_oversight():
+    """
+    Admin view of all driver applications, status, and decision maker.
+    """
+    # Query all applications, joining with Organization for the name 
+    # and User (via SPONSOR_RESPONSIBLE_ID) for the decision-maker's name.
+    applications = DriverApplication.query.outerjoin(
+        DriverApplication.organization
+    ).outerjoin(
+        DriverApplication.sponsor_responsible
+    ).order_by(
+        DriverApplication.RESPONDED_AT.desc(),
+        DriverApplication.APPLIED_AT.desc() 
+    ).all()
+    
+    return render_template("administrator/application_oversight.html", applications=applications)

@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
+<p style="margin-top:1rem;">
+  <a class="btn btn-outline" href="{{ url_for('administrator_bp.dashboard') }}">← Back to Admin Dashboard</a>
+</p>
 <h2>Timeout Users</h2>
 
 <table>
@@ -17,7 +20,7 @@
       <td>{{ user.USERNAME }}</td>
       <td>
         {% if user.is_account_locked() %}
-          Locked until {{ user.LOCKOUT_TIME }}
+        Locked until {{ moment(user.LOCKOUT_TIME).format('LLLL') }}
         {% else %}
           Active
         {% endif %}
@@ -26,14 +29,14 @@
         <form method="POST" action="{{ url_for('administrator_bp.set_timeout', user_id=user.USER_CODE) }}" style="display:flex; gap:.5rem;">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="number" name="minutes" min="1" placeholder="e.g. 30" required>
-          <button class="btn" type="submit">Timeout</button>
+          <button class="btn btn-outline" type="submit">Timeout</button>
         </form>
       </td>
       <td>
         {% if user.is_account_locked() %}
         <form method="POST" action="{{ url_for('administrator_bp.clear_timeout', user_id=user.USER_CODE) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn-outline" type="submit">Clear</button>
+          <button class="btn btn-outline" type="submit">Clear</button>
         </form>
         {% else %}
         <span class="muted">—</span>
@@ -43,8 +46,4 @@
     {% endfor %}
   </tbody>
 </table>
-
-<p style="margin-top:1rem;">
-  <a class="btn-outline" href="{{ url_for('administrator_bp.dashboard') }}">← Back to Admin Dashboard</a>
-</p>
 {% endblock %}

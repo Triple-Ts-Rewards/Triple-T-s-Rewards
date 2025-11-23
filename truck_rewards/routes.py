@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
-from models import StoreSettings, CartItem, User, Notification, Address, WishlistItem, DriverSponsorAssociation
+from models import StoreSettings, CartItem, User, Notification, Address, WishlistItem, DriverSponsorAssociation, Sponsor
 from extensions import db
 import requests
 import os
@@ -14,7 +14,6 @@ rewards_bp = Blueprint('rewards_bp', __name__, template_folder="../templates")
 
 # --- Helper function to get eBay Access Token ---
 def get_ebay_access_token():
-    # (No changes needed in this function)
     if USE_SANDBOX:
         app_id = os.getenv('EBAY_APP_ID')
         cert_id = os.getenv('EBAY_CERT_ID')
@@ -47,50 +46,64 @@ def get_ebay_access_token():
         return None
 
 # --- Main Store Route (No longer needed, but can be kept or removed) ---
-@rewards_bp.route('/')
-def store():
-    return render_template('truck-rewards/index.html')
-
-# --- Products API Endpoint ---
 @rewards_bp.route("/products/<int:sponsor_id>")
 @login_required
 def products(sponsor_id):
-    settings = StoreSettings.query.filter_by(sponsor_id=sponsor_id).first()
+    """Fetches paginated products for a sponsor store from eBay."""
+    settings = StoreSettings.query.filter_by(ORG_ID=sponsor_id).first()
     if not settings:
         return jsonify({"error": "Store settings not found for this sponsor."}), 404
-        
+
     category_id = settings.ebay_category_id
     point_ratio = settings.point_ratio
-    
-    search_query = request.args.get('q')
-    min_price = request.args.get('min_price')
-    max_price = request.args.get('max_price')
     access_token = get_ebay_access_token()
 
     if not access_token:
         return jsonify({"error": "Could not authenticate with eBay API"}), 500
+
     if USE_SANDBOX:
         search_url = "https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search"
     else:
         search_url = "https://api.ebay.com/buy/browse/v1/item_summary/search"
-    headers = { "Authorization": f"Bearer {access_token}" }
-    params = { "limit": 20 }
+
+    # --- Parameters ---
+    search_query = request.args.get('q')
+    min_price = request.args.get('min_price')
+    max_price = request.args.get('max_price')
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 20, type=int)
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # eBay pagination uses 'offset' instead of 'page'
+    offset = (page - 1) * limit
+
+    params = {
+        "limit": limit,
+        "offset": offset,
+        "category_ids": category_id,
+    }
+
     if search_query:
         params['q'] = search_query
-        params['category_ids'] = category_id
-    else:
-        params['category_ids'] = category_id
+
     filters = []
     if min_price or max_price:
         price_range = f"price:[{min_price or ''}..{max_price or ''}]"
         filters.append(price_range)
         filters.append("priceCurrency:USD")
+
     if filters:
         params['filter'] = ",".join(filters)
+
     try:
         response = requests.get(search_url, headers=headers, params=params)
         response.raise_for_status()
         data = response.json()
+
+        total_items = int(data.get("total", 0))
+        total_pages = (total_items + limit - 1) // limit  # round up
+
         products = []
         for item in data.get("itemSummaries", []):
             if item.get("image"):
@@ -103,8 +116,14 @@ def products(sponsor_id):
                     "image": item.get("image", {}).get("imageUrl", ""),
                     "pointsEquivalent": int(price_float * point_ratio)
                 })
-        print(f"Products found: {len(products)}")
-        return jsonify(products)
+
+        return jsonify({
+            "products": products,
+            "page": page,
+            "pages": total_pages,
+            "total": total_items
+        })
+
     except Exception as e:
         print(f"Error fetching products from eBay: {e}")
         return jsonify({"error": "Could not retrieve products from eBay"}), 500
@@ -127,7 +146,7 @@ def add_to_cart():
     
     existing_item = CartItem.query.filter_by(
         user_id=current_user.USER_CODE, 
-        sponsor_id=sponsor_id, 
+        ORG_ID=sponsor_id, 
         item_id=item_id
     ).first()
 
@@ -136,7 +155,7 @@ def add_to_cart():
     else:
         new_item = CartItem(
             user_id=current_user.USER_CODE,
-            sponsor_id=sponsor_id,
+            ORG_ID=sponsor_id,
             item_id=item_id,
             title=title,
             price=price,
@@ -154,7 +173,7 @@ def view_cart(sponsor_id):
     """Displays the user's shopping cart."""
     cart_items = CartItem.query.filter_by(
         user_id=current_user.USER_CODE,
-        sponsor_id=sponsor_id
+        ORG_ID=sponsor_id
     ).all()
 
     total_points = sum(item.points * item.quantity for item in cart_items)
@@ -162,7 +181,7 @@ def view_cart(sponsor_id):
 
     association = DriverSponsorAssociation.query.filter_by(
         driver_id=current_user.USER_CODE,
-        sponsor_id=sponsor_id
+        ORG_ID=sponsor_id
     ).first()
 
     user_points = association.points if association else 0
@@ -194,7 +213,7 @@ def remove_from_cart(item_id, sponsor_id):
 @login_required
 def clear_cart(sponsor_id):
     """Clears all items from the user's cart."""
-    CartItem.query.filter_by(user_id=current_user.USER_CODE, sponsor_id=sponsor_id).delete()
+    CartItem.query.filter_by(user_id=current_user.USER_CODE, ORG_ID=sponsor_id).delete()
     db.session.commit()
     flash("Your cart has been cleared.", "info")
     return redirect(url_for('rewards_bp.view_cart', sponsor_id=sponsor_id))
@@ -259,12 +278,12 @@ def checkout():
         flash("Sponsor ID is missing. Cannot complete purchase.", "danger")
         return redirect(url_for('driver_bp.dashboard'))
 
-    cart_items = CartItem.query.filter_by(user_id=current_user.USER_CODE).all()
+    cart_items = CartItem.query.filter_by(user_id=current_user.USER_CODE, ORG_ID=sponsor_id).all()
     total_points = sum(item.points * item.quantity for item in cart_items)
 
     association = DriverSponsorAssociation.query.filter_by(
         driver_id=current_user.USER_CODE,
-        sponsor_id=sponsor_id
+        ORG_ID=sponsor_id
     ).first()
 
     if not association or association.points < total_points:
@@ -272,6 +291,29 @@ def checkout():
         return redirect(url_for('rewards_bp.view_cart', sponsor_id=sponsor_id))
 
     association.points -= total_points
+
+    # Get the list of items for the message
+    item_summary_list = []
+    for item in cart_items:
+        item_summary_list.append(f"{item.title} for {item.points * item.quantity} points")
+    
+    items_string = ", ".join(item_summary_list)
+    
+    # Build the message
+    message = (
+        f"Driver {current_user.USERNAME} purchased {items_string} from your catalog."
+    )
+    
+    # Find all sponsors belonging to this organization
+    sponsors = Sponsor.query.filter_by(ORG_ID=sponsor_id).all()
+    
+    # Send notification to each sponsor
+    for sponsor in sponsors:
+        Notification.create_notification(
+            recipient_code=sponsor.USER_CODE,
+            sender_code=current_user.USER_CODE,
+            message=message
+        )
     
     # Send notification if enabled
     if current_user.wants_order_notifications:

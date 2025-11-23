@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation with {{ partner.USERNAME }} - Triple T's Rewards{% endblock %}
+
+{% block content %}
+  <div class="page-header" style="justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+    <div>
+      <p class="eyebrow">Direct Message</p>
+      <h1>{{ partner.FNAME }} {{ partner.LNAME }}</h1>
+      <p class="text-muted" style="margin:0;">@{{ partner.USERNAME }} · {{ partner.USER_TYPE|title }}</p>
+    </div>
+    <a href="{{ url_for('notification_bp.conversations') }}" class="btn btn-outline">← All Conversations</a>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent" style="display:flex; justify-content:space-between; align-items:center;">
+      <h2>Conversation</h2>
+      <span class="text-muted" style="font-size:0.9rem;">Messages are delivered instantly</span>
+    </div>
+    <div class="org-card-body" style="display:flex; flex-direction:column; gap:1.25rem;">
+      <div class="dm-thread" id="dm-thread">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="dm-bubble {% if message.SENDER_CODE == current_user.USER_CODE %}from-me{% else %}from-them{% endif %}">
+              <div class="dm-meta">
+                {% if message.SENDER_CODE == current_user.USER_CODE %}
+                  You
+                {% else %}
+                  {{ partner.USERNAME }}
+                {% endif %}
+                · {{ message.TIMESTAMP.strftime('%b %d, %Y • %I:%M %p') }}
+              </div>
+              <p style="margin:0.5rem 0 0;">{{ message.MESSAGE }}</p>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted" style="margin:0;">No messages yet. Say hello below!</p>
+        {% endif %}
+      </div>
+
+      <form method="POST" style="display:grid; gap:0.75rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="message" style="font-weight:600;">New Message</label>
+        <textarea id="message" name="message" rows="3" class="input" placeholder="Write a message..." required></textarea>
+        <button type="submit" class="btn btn-primary" style="justify-self:flex-start;">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const thread = document.getElementById('dm-thread');
+    if (thread) {
+      thread.scrollTop = thread.scrollHeight;
+    }
+  </script>
+{% endblock %}

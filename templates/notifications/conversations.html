@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Direct Messages - Triple T's Rewards{% endblock %}
+
+{% block content %}
+  <div class="page-header" style="justify-content:space-between; flex-wrap:wrap;">
+    <div>
+      <h1>Direct Messages</h1>
+      <p class="text-muted" style="margin:0;">Review ongoing conversations or start a new one with anyone in the program.</p>
+    </div>
+    <a href="{{ url_for('notification_bp.notifications') }}" class="btn btn-outline">← Back to Inbox</a>
+  </div>
+
+  <div class="card-elevated" style="margin-bottom:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Active Threads</h2>
+    </div>
+    <div class="org-card-body">
+      {% if threads %}
+        <div class="conversation-list">
+          {% for thread in threads %}
+            <div class="conversation-item">
+              <div>
+                <strong>{{ thread.user.USERNAME }}</strong>
+                <p class="text-muted" style="margin:0.15rem 0 0;">
+                  {{ thread.user.FNAME }} {{ thread.user.LNAME }} · {{ thread.user.USER_TYPE|title }}
+                </p>
+                <p class="text-muted" style="margin:0.35rem 0 0; font-size:0.9rem;">
+                  {{ thread.last_message.TIMESTAMP.strftime('%b %d, %Y • %I:%M %p') }}
+                </p>
+                <p class="text-muted" style="margin:0.35rem 0 0;">{{ thread.last_message.MESSAGE[:160] }}{% if thread.last_message.MESSAGE|length > 160 %}…{% endif %}</p>
+              </div>
+              <a href="{{ url_for('notification_bp.direct_message', user_id=thread.user.USER_CODE) }}" class="btn btn-primary">Open Thread</a>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding:2rem 1rem;">
+          <div class="empty-state-icon">💬</div>
+          <p class="empty-state-heading">No direct messages yet</p>
+          <p class="text-muted">Choose someone below to start the first conversation.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Start a New Conversation</h2>
+    </div>
+    <div class="org-card-body" style="display:flex; flex-direction:column; gap:1rem;">
+      <form method="get" style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+        <input type="text" name="q" class="input" placeholder="Search by username or name" value="{{ search }}" style="flex:1; min-width:220px;">
+        <button type="submit" class="btn btn-outline">Search</button>
+      </form>
+
+      {% if available_users %}
+        <div class="table-responsive" style="max-height:360px; overflow:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">User</th>
+                <th scope="col">Role</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in available_users %}
+                <tr>
+                  <td>
+                    <strong>{{ user.USERNAME }}</strong>
+                    <div class="text-muted" style="font-size:0.9rem;">{{ user.FNAME }} {{ user.LNAME }}</div>
+                  </td>
+                  <td>{{ user.USER_TYPE|title }}</td>
+                  <td>
+                    <a href="{{ url_for('notification_bp.direct_message', user_id=user.USER_CODE) }}" class="btn btn-outline">Message</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted" style="margin:0;">No users found with that search.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

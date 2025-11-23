@@ -8,7 +8,14 @@
         <input type="text" id="username" name="username" required>
         <br><br>
         <label for="name">Name:</label>
-        <input type="text" id="name" name="name" required>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          pattern="^[A-Za-z]+\s[A-Za-z]+$"
+          title="Please enter only a first and last name (letters only, separated by a space)."
+          required
+        >
         <br><br>
         <label for="email">Email:</label>
         <input type="email" id="email" name="email" required>
@@ -22,5 +29,5 @@
         <br><br>
         <button type="submit" class="btn">Create User</button>
     </form>
-    <p><a href="{{ url_for('administrator_bp.dashboard') }}">Back to Dashboard</a></p>
+    <p><a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline">Back to Dashboard</a></p>
 {% endblock %}

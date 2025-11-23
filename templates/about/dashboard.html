@@ -2,37 +2,41 @@
 
 {% block title %}About TTT Rewards{% endblock %}
 
-{% block content %}  {# <-- 2. Wrap your unique content in the 'content' block #}
-  
-    {# You no longer need to include the navbar/footer here, as the base template handles it #}
-    {# The base template also handles current_user.is_authenticated check for navbar/scripts #}
-
+{% block content %}
+  <div class="page-header" style="justify-content:space-between; flex-wrap:wrap;">
+    <div>
+      <h1>About TTT Rewards</h1>
+      <p class="text-muted" style="margin:0;">Latest release details and project overview.</p>
+    </div>
     {% if current_user.is_authenticated and current_user.USER_TYPE == 'administrator' %}
-      <a href="{{ url_for('about_bp.edit_about') }}" class="btn btn-dash">Edit About</a>
+      <a href="{{ url_for('about_bp.edit_about') }}" class="btn btn-primary">Edit About</a>
     {% endif %}
-    </p>
+  </div>
 
-    <h2>About TTT Rewards</h2>
+  <div class="card-elevated" style="margin-bottom:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Hero</h2>
+    </div>
+    <div class="org-card-body" style="text-align:center;">
+      <img src="{{ url_for('static', filename='TripleTBanner.png') }}"
+           alt="Triple T banner" style="width:100%; max-width:1024px; border-radius:16px; border:1px solid var(--border);">
+    </div>
+  </div>
 
-    <img src="{{ url_for('static', filename='TripleTBanner.png') }}"
-         alt="Triple T banner" class="center-image" width="1024" height="450">
-
-    <ul>
-      <li>Team #: {{ about_info.team_num }}</li>
-      <li>Version #: {{ about_info.version_num }}</li>
-      <li>Release Date: {{ about_info.release_date.strftime('%Y-%m-%d') if about_info.release_date else 'N/A' }}</li>
-      <li>Product Name: {{ about_info.product_name or 'N/A' }}</li>
-      <li>Product Description: {{ about_info.product_desc or 'N/A' }}</li>
-    </ul>
-
-    {# The base template usually handles flash messages inside the main content block, 
-       but if you need them here specifically, keep them: #}
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for category, message in messages %}
-        <div class="flash-messages {{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endwith %}
-
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Release Details</h2>
+    </div>
+    <div class="org-card-body">
+      <ul style="list-style:none; padding:0; margin:0; display:grid; gap:.75rem;">
+        <li><strong>Team #:</strong> {{ about_info.team_num }}</li>
+        <li><strong>Version #:</strong> {{ about_info.version_num }}</li>
+        <li><strong>Release Date:</strong> {{ about_info.release_date.strftime('%Y-%m-%d') if about_info.release_date else 'N/A' }}</li>
+        <li><strong>Product Name:</strong> {{ about_info.product_name or 'N/A' }}</li>
+        <li><strong>Product Description:</strong> {{ about_info.product_desc or 'N/A' }}</li>
+      </ul>
+    </div>
+  </div>
 {% endblock %}
 
 {# 3. You don't need a scripts block unless you have *extra* scripts specific to the about page #}

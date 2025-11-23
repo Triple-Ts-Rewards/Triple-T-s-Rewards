@@ -7,14 +7,13 @@ from flask_login import current_user, logout_user
 from extensions import db, migrate, login_manager, csrf
 from config import Config
 from models import User
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf import CSRFProtect
 from forms import AboutForm
-from extensions import bcrypt, migrate, login_manager, csrf, bcrypt, db
+from extensions import bcrypt, migrate, login_manager, csrf, bcrypt, db, mail, moment
 from auth.routes import auth_bp
 
 # Initialize scheduler
 scheduler = APScheduler()
-csrf = CSRFProtect()
 
 def create_app():
     # Load environment variables from .env file
@@ -23,7 +22,9 @@ def create_app():
 
     # Initialize Flask app
     app = Flask(__name__)
-    app.config.from_object(Config)
+    mail.init_app(app)
+    moment.init_app(app)
+    app.config.from_object("config.Config")
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-change-me")
     app.config["WTF_CSRF_TIME_LIMIT"] = None  # optional
 
@@ -77,6 +78,8 @@ def create_app():
         hours=24  # Check once per day
     )
 
+    mail.init_app(app)
+    
     return app
 
 @login_manager.user_loader

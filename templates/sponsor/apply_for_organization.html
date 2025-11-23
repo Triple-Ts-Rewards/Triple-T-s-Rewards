@@ -1,63 +1,90 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container my-5">
-    
-    <div class="card shadow-lg mx-auto" style="max-width: 600px;">
-        <div class="card-header bg-primary text-white text-center py-3">
-            <h2 class="mb-0">Organization Approval Application</h2>
-        </div>
-        <div class="card-body p-4">
 
-            {# Logic to display current status and organization name #}
-            {% if sponsor %}
-                <p class="text-center mb-4">
-                    Your current organization status is: 
-                    <span class="badge 
-                        {% if sponsor.STATUS == 'Approved' %} bg-success 
-                        {% elif sponsor.STATUS == 'Rejected' %} bg-danger 
-                        {% else %} bg-warning text-dark {% endif %}
-                        p-2 fs-6">
-                        {{ sponsor.STATUS }}
+  <div class="page-header">
+      <h1>Organization Approval Application</h1>
+      <p class="text-muted" style="margin: 0;">Submit or update the organization name that appears to drivers.</p>
+  </div>
+
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Status & Details</h2>
+      </div>
+
+      <div class="org-card-body">
+
+            {% if sponsor and sponsor.organization %}
+                <p style="text-align: center; margin-bottom: 1rem;">
+                    Current status:
+                    <span class="badge-outline-small" style="margin-left: 0.5rem;">
+                        {{ sponsor.organization.STATUS }}
                     </span>
                 </p>
                 
-                {% if sponsor.STATUS == 'Approved' %}
-                    <div class="alert alert-success text-center" role="alert">
-                        Your organization is **APPROVED**! Use this form to update your organization name if necessary.
+                {% if sponsor.organization.STATUS == 'Approved' %}
+                    <div class="flash-messages success" style="text-align:center;">
+                        Your organization "{{ sponsor.organization.ORG_NAME }}" is approved. Use this form to update the name if needed.
                     </div>
-                {% elif sponsor.STATUS == 'Pending' %}
-                    <div class="alert alert-info text-center" role="alert">
-                        Your application is currently **PENDING** review by the administrator. Thank you for your patience!
+                {% elif sponsor.organization.STATUS == 'Pending' %}
+                    <div class="flash-messages info" style="text-align:center;">
+                        Your application for "{{ sponsor.organization.ORG_NAME }}" is pending review. Thank you for your patience.
                     </div>
-                {% elif sponsor.STATUS == 'Rejected' %}
-                    <div class="alert alert-danger text-center" role="alert">
-                        Your previous application was **REJECTED**. Please submit a new organization name below.
+                {% elif sponsor.organization.STATUS == 'Rejected' %}
+                    <div class="flash-messages danger" style="text-align:center;">
+                        Your previous application for "{{ sponsor.organization.ORG_NAME }}" was rejected. Please submit a new name below.
                     </div>
                 {% endif %}
 
             {% endif %}
 
-            <form method="POST" action="{{ url_for('sponsor_bp.apply_for_organization') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="margin-top: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #eee;">
+                <h3>Join an Existing Organization</h3>
+                <form method="POST" action="{{ url_for('sponsor_bp.apply_for_organization') }}" class="form-inline" style="display:flex; gap:1rem; align-items:flex-end;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="form-group" style="flex-grow:1;">
+                        <label for="existing_org_select">Select Organization</label>
+                        <select id="existing_org_select" name="org_name" class="form-control" style="width:100%;">
+                            <option value="" disabled selected>-- Choose an Organization --</option>
+                            {% for org in available_orgs %}
+                                <option value="{{ org.ORG_NAME }}">{{ org.ORG_NAME }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success">Join Selected</button>
+                </form>
+            </div>
+            <div style="margin-top: 1.5rem;">
+                <h3>Create or Update Organization</h3>
+                <form method="POST" action="{{ url_for('sponsor_bp.apply_for_organization') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                <div class="mb-3">
-                    <label for="org_name" class="form-label fw-bold">Organization Name</label>
-                    <input type="text" 
-                           class="form-control" 
-                           id="org_name" 
-                           name="org_name" 
-                           value="{{ sponsor.ORG_NAME if sponsor.ORG_NAME else '' }}" 
-                           required 
-                           placeholder="e.g., Triple-T Trucking Rewards">
-                    <div class="form-text">This is the name drivers will see when applying for sponsorship.</div>
-                </div>
+                    <div class="form-group">
+                        <label for="org_name">Organization Name</label>
+                        <input type="text" 
+                               id="org_name" 
+                               name="org_name" 
+                               value="{{ sponsor.organization.ORG_NAME if sponsor and sponsor.organization else '' }}" 
+                               required 
+                               placeholder="e.g., Triple-T Trucking Rewards">
+                        <small class="text-muted">Drivers will see this name when applying for sponsorship.</small>
+                    </div>
 
-                <div class="d-grid gap-2 mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg">Submit for Approval / Update Details</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+                    <div class="form-actions" style="margin-top: 1.5rem;">
+                        <button type="submit" class="btn btn-primary">Submit for Approval / Update Details</button>
+                    </div>
+                </form>
+            </div>
+      </div>
+  </div>
+
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Navigation</h2>
+      </div>
+      <div class="org-card-body" style="text-align:center;">
+          <a class="btn btn-outline" href="{{ url_for('sponsor_bp.dashboard') }}">← Back to Sponsor Dashboard</a>
+      </div>
+  </div>
 {% endblock %}

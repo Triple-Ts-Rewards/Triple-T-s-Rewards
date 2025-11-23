@@ -9,26 +9,6 @@
 {% block content %}
   <div class="container">
     <div class="card">
-
-      {# Flash messages using your alert styles #}
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="flash-messages">
-            {% for category, message in messages %}
-              {% if category == 'success' %}
-                <div class="alert success" role="alert">{{ message }}</div>
-              {% elif category == 'danger' %}
-                <div class="alert error" role="alert">{{ message }}</div>
-              {% elif category == 'warning' %}
-                <div class="alert warning" role="alert">{{ message }}</div>
-              {% else %}
-                <div class="alert" role="status">{{ message }}</div>
-              {% endif %}
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
-
       <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:1rem;">
         <a href="{{ url_for('administrator_bp.accounts') }}" class="btn btn-outline" aria-label="Back to Accounts">
           ← Back

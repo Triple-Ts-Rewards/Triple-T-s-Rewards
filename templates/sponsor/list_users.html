@@ -1,31 +1,55 @@
 {% extends "base.html" %}
+
 {% block content %}
-<h1>Sponsor Users</h1>
 
-{% if users %}
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 120px;">USER_CODE</th>
-        <th>Username</th>
-        <th style="width: 140px;">Role</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in users %}
-      <tr>
-        <td>{{ u.USER_CODE }}</td>
-        <td>{{ u.USERNAME }}</td>
-        <td>{{ u.USER_TYPE }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-{% else %}
-  <p class="muted">No sponsor users yet.</p>
-{% endif %}
+  <div class="page-header">
+      <h1>Sponsor Users</h1>
+      <p class="text-muted" style="margin: 0;">Manage the sponsor accounts tied to your organization.</p>
+  </div>
 
-<p style="margin-top:1rem;">
-  <a class="btn btn-primary" href="{{ url_for('sponsor_bp.create_sponsor_user') }}">+ New Sponsor User</a>
-</p>
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>User List</h2>
+      </div>
+      <div class="org-card-body">
+        {% if users %}
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 120px;">USER_CODE</th>
+                  <th>Username</th>
+                  <th style="width: 140px;">Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for u in users %}
+                <tr>
+                  <td>{{ u.USER_CODE }}</td>
+                  <td>{{ u.USERNAME }}</td>
+                  <td>{{ u.USER_TYPE }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="empty-state">
+              <div class="empty-state-icon">👥</div>
+              <p class="empty-state-heading">No sponsor users yet.</p>
+          </div>
+        {% endif %}
+      </div>
+  </div>
+
+  <div class="card-elevated">
+      <div class="card-header-accent">
+          <h2>Actions</h2>
+      </div>
+      <div class="org-card-body" style="display:flex; gap:1rem; flex-wrap:wrap;">
+          <a class="btn btn-primary" href="{{ url_for('sponsor_bp.create_sponsor_user') }}">+ New Sponsor User</a>
+          <a class="btn btn-outline" href="{{ url_for('sponsor_bp.dashboard') }}">← Back to Sponsor Dashboard</a>
+      </div>
+  </div>
+
 {% endblock %}

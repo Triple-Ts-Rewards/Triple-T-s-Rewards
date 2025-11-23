@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Application History{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Application History</h2>
+    <p class="lead">View the status of your current and past sponsor applications.</p>
+
+    {% if applications %}
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th scope="col">Organization</th>
+                <th scope="col">Status</th>
+                <th scope="col">Submitted On</th>
+                <th scope="col">Response Date</th>
+                <th scope="col">Reason/Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for app in applications %}
+            <tr>
+                <td>{{ app.organization.ORG_NAME }}</td>
+                <td>
+                    {% if app.STATUS == 'Accepted' %}
+                        <span class="badge bg-success">{{ app.STATUS }}</span>
+                    {% elif app.STATUS == 'Rejected' %}
+                        <span class="badge bg-danger">{{ app.STATUS }}</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">{{ app.STATUS }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ app.APPLIED_AT.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    {% if app.RESPONDED_AT %}
+                        {{ app.RESPONDED_AT.strftime('%Y-%m-%d %H:%M') }}
+                    {% else %}
+                        <span class="text-muted">N/A</span>
+                    {% endif %}
+                </td>
+                <td>{{ app.REASON or '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        You have not submitted any sponsor applications yet.
+    </div>
+    {% endif %}
+
+    <div class="mt-4" style="margin-top: 30px !important;">
+        <a href="{{ url_for('driver_bp.apply_driver') }}" class="btn btn-primary">Apply to a New Organization</a>
+    </div>
+</div>
+{% endblock %}

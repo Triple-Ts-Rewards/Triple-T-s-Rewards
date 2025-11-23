@@ -1,26 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
-  <h2>Login</h2>
+  <div class="page-header">
+    <h1>Login</h1>
+    <p class="text-muted" style="margin:0;">Access your rewards dashboard.</p>
+  </div>
 
-  <form method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label>Username</label>
-    <input type="text" name="username" required>
-    <label>Password</label>
-    <input type="password" name="password" required>
-    <button type="submit">Login</button>
-    <p><a href="{{ url_for('auth.reset_password') }}">Forgot your password?</a></p>
-    <p><a href="/">Back</a></p>
-  </form>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul>
-          {% for category, message in messages %}
-            <div class="flash-messages {{ category }}">{{ message }}</div>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
+  <div class="card-elevated" style="max-width:520px;">
+    <div class="card-header-accent">
+      <h2>Account Credentials</h2>
+    </div>
+    <div class="org-card-body">
+      <form method="POST" style="display:grid; gap:1rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input id="username" type="text" name="username" class="input" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password" type="password" name="password" class="input" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Login</button>
+      </form>
+      <div class="form-actions" style="margin-top:1rem;">
+        <a href="{{ url_for('auth.reset_password') }}" class="btn btn-outline">Forgot your password?</a>
+      </div>
+    </div>
   </div>
 {% endblock %}

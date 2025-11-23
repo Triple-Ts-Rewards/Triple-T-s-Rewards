@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Application Oversight{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Global Driver Application Oversight</h2>
+    <p class="lead">Viewing all driver applications across all organizations ({{ applications|length }} total).</p>
+
+    <table class="table table-striped table-hover table-responsive">
+        <thead>
+            <tr>
+                <th scope="col">Org Name</th>
+                <th scope="col">Driver (ID)</th>
+                <th scope="col">Status</th>
+                <th scope="col">Applied</th>
+                <th scope="col">Responded</th>
+                <th scope="col">Decision By</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for app in applications %}
+            <tr>
+                <td>{{ app.organization.ORG_NAME if app.organization else 'N/A' }}</td>
+                <td>{{ app.driver.user_account.USERNAME if app.driver and app.driver.user_account else 'Unknown' }} ({{ app.DRIVER_ID }})</td>
+                <td>
+                    {% if app.STATUS == 'Accepted' %}
+                        <span class="badge bg-success">{{ app.STATUS }}</span>
+                    {% elif app.STATUS == 'Rejected' %}
+                        <span class="badge bg-danger">{{ app.STATUS }}</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">{{ app.STATUS }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ app.APPLIED_AT.strftime('%Y-%m-%d') }}</td>
+                <td>
+                    {% if app.RESPONDED_AT %}
+                        {{ app.RESPONDED_AT.strftime('%Y-%m-%d') }}
+                    {% else %}
+                        <span class="text-muted">N/A</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if app.SPONSOR_RESPONSIBLE_ID %}
+                        {{ app.sponsor_responsible.USERNAME if app.sponsor_responsible else 'ID: ' ~ app.SPONSOR_RESPONSIBLE_ID }}
+                    {% else %}
+                        <span class="text-muted">N/A</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

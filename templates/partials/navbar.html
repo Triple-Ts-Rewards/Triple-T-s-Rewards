@@ -1,6 +1,11 @@
 <nav class="site-nav">
   <div class="nav-left">
 
+    <!-- Sidebar toggle (visible only on small screens) -->
+    <button class="sidebar-toggle" aria-label="Toggle navigation">
+      ☰
+    </button>
+
     <a class="nav-link {{ 'active' if request.endpoint == 'common.index' else '' }}"
        href="{{ url_for('common.index') }}">
       <img src="{{ url_for('static', filename='ttt_logo.png') }}" alt="Triple T's Rewards" class="nav-logo">
@@ -11,14 +16,19 @@
   <div class="nav-right">
     {% if current_user.is_authenticated %}
       <a class="nav-link {{ 'active' if request.endpoint == 'notification_bp.notifications' else '' }}"
-         href="{{ url_for('notification_bp.notifications') }}" aria-label="View Messages">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icon-tabler-message">
-          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-          <path d="M8 9h8" />
-          <path d="M8 13h6" />
-          <path d="M12 20l-4 -4h-4a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2h16a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-4l-4 4z" />
+         href="{{ url_for('notification_bp.notifications') }}" aria-label="View Messages and Notifications" style="color: white; transition: color 0.3s ease;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" class="icon icon-tabler icon-tabler-message-filled">
+          <path d="M20 2H4C2.897 2 2 2.897 2 4V22L6.586 17.414C6.961 17.039 7.469 16.833 8 16.833H20C21.103 16.833 22 15.936 22 14.833V4C22 2.897 21.103 2 20 2Z"/>
+          <rect x="7" y="8" width="10" height="2" rx="1" fill="#222629"/>
+          <rect x="7" y="12" width="6" height="2" rx="1" fill="#222629"/>
         </svg>
-        <span class="visually-hidden">Send Message</span>
+        <style>
+          .nav-link:hover svg {
+            color: #86C232 !important;
+          }
+        </style>
+        <span id="notification-count"></span>
+        <span class="visually-hidden">Messages and Notifications</span>
       </a>
 
       {% if current_user.USER_TYPE == 'driver' %}
@@ -37,12 +47,6 @@
       <a href="{{ url_for('rewards_bp.view_wishlist') }}" class="nav-link">
         Wishlist
       </a>
-      <span id="notification-bell-container">
-        <a href="{{ url_for('notification_bp.notifications') }}">
-          🔔
-        </a>
-        <span id="notification-count"></span>
-      </span>
       <span class="user-menu-container">
         <button class="user-menu-toggle" aria-haspopup="true" aria-expanded="false">
           <span class="user-name">Hi, {{ current_user.USERNAME }}</span>
@@ -74,7 +78,7 @@
         </div>
       {% endif %}
     {% else %}
-      <a class="btn-primary" href="{{ url_for('auth.login') }}">Login</a>
+      <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Login</a>
     {% endif %}
   </div>
 </nav>

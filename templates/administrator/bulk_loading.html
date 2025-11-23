@@ -41,12 +41,12 @@ D|Triple T's Trucking|John|Doe|john.doe@gmail.com</pre>
             <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 
-                <div class="form-group">
+                <div class="form-group mb-4">
                     <label for="file">Select File (.txt)</label>
                     <input type="file" class="form-control-file" id="file" name="file" required>
                 </div>
                 
-                <button type="submit" class="btn btn-primary mt-3">
+                <button type="submit" class="btn btn-primary mt-4">
                     <i class="fas fa-upload"></i> Upload and Process
                 </button>
             </form>
@@ -82,4 +82,7 @@ D|Triple T's Trucking|John|Doe|john.doe@gmail.com</pre>
     </div>
     {% endif %}
 </div>
+<p style="margin-top: 1.5rem;">
+  <a class="btn btn-outline" href="{{ url_for('administrator_bp.dashboard') }}">← Back to Admin Dashboard</a>
+</p>
 {% endblock %}
