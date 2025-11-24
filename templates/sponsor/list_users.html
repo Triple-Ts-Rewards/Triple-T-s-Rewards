@@ -20,6 +20,8 @@
                   <th style="width: 120px;">USER_CODE</th>
                   <th>Username</th>
                   <th style="width: 140px;">Role</th>
+                  <th style="width: 120px;">Status</th>
+                  <th style="width: 150px;">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -28,6 +30,33 @@
                   <td>{{ u.USER_CODE }}</td>
                   <td>{{ u.USERNAME }}</td>
                   <td>{{ u.USER_TYPE }}</td>
+                  <td>
+                    {% if u.IS_ACTIVE == 1 %}
+                      <span class="badge badge-success">Active</span>
+                    {% else %}
+                      <span class="badge badge-danger">Disabled</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if u.USER_CODE != current_user.USER_CODE %}
+                      <form method="POST" action="{{ url_for('sponsor_bp.toggle_sponsor_status', user_id=u.USER_CODE) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        {% if u.IS_ACTIVE == 1 %}
+                          <button type="submit" class="btn btn-sm btn-warning" 
+                                  onclick="return confirm('Are you sure you want to disable this sponsor account?')">
+                            Disable
+                          </button>
+                        {% else %}
+                          <button type="submit" class="btn btn-sm btn-success"
+                                  onclick="return confirm('Are you sure you want to enable this sponsor account?')">
+                            Enable
+                          </button>
+                        {% endif %}
+                      </form>
+                    {% else %}
+                      <span class="text-muted">Self</span>
+                    {% endif %}
+                  </td>
                 </tr>
                 {% endfor %}
               </tbody>
