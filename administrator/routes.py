@@ -251,6 +251,7 @@ def add_user():
         email = request.form['email']
         username = request.form['username']
         role = request.form['role']
+        org_id = request.form.get('organization_id')  # New organization field
 
         #split the name into first and last
         name_parts = name.split(' ', 1)
@@ -302,17 +303,29 @@ def add_user():
             driver = Driver(DRIVER_ID=new_user.USER_CODE, LICENSE_NUMBER="temp_license")
             db.session.add(driver)
         elif role == "sponsor":
-            # Create a temporary organization for this sponsor
-            temp_org = Organization(
-                ORG_NAME="Temp Organization - " + new_user.USERNAME,
-                STATUS="Pending",
-                CREATED_AT=datetime.utcnow()
-            )
-            db.session.add(temp_org)
-            db.session.flush()  # Get the ORG_ID
-            
-            sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=temp_org.ORG_ID)
-            db.session.add(sponsor)
+            if org_id:
+                # Validate the organization exists and is approved
+                selected_org = Organization.query.get(org_id)
+                if not selected_org:
+                    flash("Selected organization does not exist.", "danger")
+                    # Get organizations for the form on error
+                    organizations = Organization.query.filter_by(STATUS="Approved").order_by(Organization.ORG_NAME).all()
+                    return render_template('administrator/add_user.html', organizations=organizations)
+                
+                sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=selected_org.ORG_ID)
+                db.session.add(sponsor)
+            else:
+                # Create a temporary organization for this sponsor if no org selected
+                temp_org = Organization(
+                    ORG_NAME="Temp Organization - " + new_user.USERNAME,
+                    STATUS="Pending",
+                    CREATED_AT=datetime.utcnow()
+                )
+                db.session.add(temp_org)
+                db.session.flush()  # Get the ORG_ID
+                
+                sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=temp_org.ORG_ID)
+                db.session.add(sponsor)
         elif role == "admin":
             admin = Admin(ADMIN_ID=new_user.USER_CODE)
             db.session.add(admin)
@@ -322,7 +335,9 @@ def add_user():
         flash(f"User '{username}' created successfully with role '{role}' and code '{new_user_code}'.", "success")
         return redirect(url_for('administrator_bp.dashboard'))
 
-    return render_template('administrator/add_user.html')
+    # Get approved organizations for the dropdown
+    organizations = Organization.query.filter_by(STATUS="Approved").order_by(Organization.ORG_NAME).all()
+    return render_template('administrator/add_user.html', organizations=organizations)
 
 @administrator_bp.route('/locked_users', methods=['GET'])
 def locked_users():
