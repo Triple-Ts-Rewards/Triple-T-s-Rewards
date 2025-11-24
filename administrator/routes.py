@@ -2,10 +2,10 @@ from urllib.parse import urlencode
 from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
 from flask_login import login_user, logout_user, login_required, current_user
 from common.decorators import role_required
-from models import User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS
+from models import DriverSponsorAssociation, User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS
 from extensions import db
 from sqlalchemy import or_
-from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL)
+from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL, ACCOUNT_DELETED)
 from datetime import datetime, timedelta
 from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization, DriverApplication
 import csv
@@ -503,6 +503,37 @@ def enable_user(user_id):
         
     return redirect(url_for('administrator_bp.accounts'))
 
+@administrator_bp.route('/delete_user/<int:user_id>', methods=['POST'])
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # Prevent admin from deleting themselves
+    if user.USER_CODE == current_user.USER_CODE:
+        flash("You cannot delete your own account.", "danger")
+        return redirect(url_for('administrator_bp.accounts'))
+
+    if user.USER_TYPE == Role.DRIVER:
+        DriverSponsorAssociation.query.filter_by(driver_id=user.USER_CODE).delete()
+        DriverApplication.query.filter_by(DRIVER_ID=user.USER_CODE).delete()
+        Driver.query.filter_by(DRIVER_ID=user.USER_CODE).delete()
+    
+    elif user.USER_TYPE == Role.SPONSOR:
+        Sponsor.query.filter_by(USER_CODE=user.USER_CODE).delete()
+    
+    elif user.USER_TYPE == Role.ADMINISTRATOR:
+        Admin.query.filter_by(ADMIN_ID=user.USER_CODE).delete()
+    
+    Notification.query.filter(or_(
+        Notification.RECIPIENT_CODE == user.USER_CODE,
+        Notification.SENDER_CODE == user.USER_CODE
+    )).delete()
+    
+    log_audit_event(ACCOUNT_DELETED, f"admin={current_user.USERNAME} deleted_user={user.USERNAME} code={user.USER_CODE}")
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'User **{user.USERNAME}** has been deleted.', 'info')
+    return redirect(url_for('administrator_bp.accounts'))
 
 @administrator_bp.route('/reset_user_password/<int:user_id>', methods=['POST'])
 @role_required(Role.ADMINISTRATOR, allow_admin=False)
