@@ -181,15 +181,89 @@ def create_sponsor_user():
 @sponsor_bp.route("/users", methods=["GET"])
 @role_required(Role.SPONSOR, allow_admin=True)
 def list_sponsor_users():
-    sponsors = User.query.filter_by(USER_TYPE=Role.SPONSOR).order_by(User.USERNAME.asc()).all()
+    # Get current sponsor's organization ID
+    current_sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not current_sponsor or not current_sponsor.ORG_ID:
+        flash("You must belong to an organization to view other sponsors.", "warning")
+        return redirect(url_for('sponsor_bp.dashboard'))
+    
+    # Query sponsors in the same organization
+    sponsors = User.query.join(Sponsor).filter(
+        User.USER_TYPE == Role.SPONSOR,
+        Sponsor.ORG_ID == current_sponsor.ORG_ID
+    ).order_by(User.USERNAME.asc()).all()
+    
     return render_template("sponsor/list_users.html", users=sponsors)
+
+@sponsor_bp.route("/users/<int:user_id>/toggle_status", methods=["POST"])
+@role_required(Role.SPONSOR, allow_admin=True)
+def toggle_sponsor_status(user_id):
+    """Toggle the active status of a sponsor user in the same organization"""
+    # Get current sponsor's organization ID
+    current_sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not current_sponsor or not current_sponsor.ORG_ID:
+        flash("You must belong to an organization to manage other sponsors.", "warning")
+        return redirect(url_for('sponsor_bp.list_sponsor_users'))
+    
+    # Get the target user
+    target_user = User.query.get_or_404(user_id)
+    
+    # Prevent sponsors from disabling themselves
+    if target_user.USER_CODE == current_user.USER_CODE:
+        flash("You cannot disable your own account.", "danger")
+        return redirect(url_for('sponsor_bp.list_sponsor_users'))
+    
+    # Verify the target user is a sponsor in the same organization
+    target_sponsor = Sponsor.query.filter_by(USER_CODE=target_user.USER_CODE).first()
+    if not target_sponsor or target_sponsor.ORG_ID != current_sponsor.ORG_ID:
+        flash("You can only manage sponsors in your organization.", "danger")
+        return redirect(url_for('sponsor_bp.list_sponsor_users'))
+    
+    # Verify the target user is actually a sponsor
+    if target_user.USER_TYPE != Role.SPONSOR:
+        flash("You can only manage sponsor accounts.", "danger")
+        return redirect(url_for('sponsor_bp.list_sponsor_users'))
+    
+    try:
+        # Toggle the account status
+        if target_user.IS_ACTIVE == 1:
+            target_user.IS_ACTIVE = 0
+            action = "disabled"
+        else:
+            target_user.IS_ACTIVE = 1
+            action = "enabled"
+        
+        db.session.commit()
+        
+        # Log the event
+        log_audit_event(
+            "SPONSOR_ACCOUNT_STATUS_CHANGE",
+            f"Sponsor {current_user.USERNAME} {action} sponsor account {target_user.USERNAME}"
+        )
+        
+        # Send notification to the affected user if they want security notifications
+        if getattr(target_user, "wants_security_notifications", True):
+            Notification.create_notification(
+                recipient_code=target_user.USER_CODE,
+                sender_code=current_user.USER_CODE,
+                message=f"Your account has been {action} by {current_user.USERNAME}."
+            )
+        
+        flash(f"✅ Successfully {action} account for {target_user.USERNAME}.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error toggling sponsor status: {str(e)}")  # For debugging
+        flash(f"An error occurred while updating the account status: {str(e)}", "danger")
+    
+    return redirect(url_for('sponsor_bp.list_sponsor_users'))
 
 
 # Dashboard
 @sponsor_bp.route('/dashboard')
 @role_required(Role.SPONSOR, allow_admin=True)
 def dashboard():
-    # --- ADD THIS LOGIC ---
+
     # Fetch the sponsor record for the current user
     sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
     organization = None
@@ -198,7 +272,6 @@ def dashboard():
     
     # Pass the sponsor and organization objects to the template
     return render_template('sponsor/dashboard.html', sponsor=sponsor, organization=organization)
-    # --- END OF CHANGE ---
 
 # Update Store Settings
 @sponsor_bp.route('/settings', methods=['GET', 'POST'])
