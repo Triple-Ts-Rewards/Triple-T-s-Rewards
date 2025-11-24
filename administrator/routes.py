@@ -4,6 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from common.decorators import role_required
 from models import DriverSponsorAssociation, User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS
 from extensions import db
+from extensions import bcrypt
 from sqlalchemy import or_
 from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL, ACCOUNT_DELETED)
 from datetime import datetime, timedelta
@@ -636,3 +637,85 @@ def application_oversight():
     ).all()
     
     return render_template("administrator/application_oversight.html", applications=applications)
+
+
+# Update Contact Information
+@administrator_bp.route('/update_info', methods=['GET', 'POST'])
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def update_info():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        phone = request.form.get('phone', '').strip()
+
+        # Basic email validation
+        if not email or '@' not in email:
+            flash('Please enter a valid email address.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+
+        # Check if email already exists for another user
+        if User.query.filter(User.EMAIL == email, User.USER_CODE != current_user.USER_CODE).first():
+            flash('Email already in use.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+
+        # Basic phone validation (optional)
+        if phone and (not phone.isdigit() or len(phone) < 10):
+            flash('Please enter a valid phone number.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+        
+        # Check if phone already exists for another user
+        if phone and User.query.filter(User.PHONE == phone, User.USER_CODE != current_user.USER_CODE).first():
+            flash('Phone number already in use.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+        
+        try:
+            current_user.EMAIL = email
+            current_user.PHONE = phone
+
+            db.session.commit()
+            log_audit_event("ADMIN_INFO_UPDATE", f"Administrator {current_user.USERNAME} updated contact information")
+            flash('Contact information updated successfully!', 'success')
+            return redirect(url_for('administrator_bp.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred while updating your information', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+
+    return render_template('administrator/update_info.html', user=current_user)
+
+# Update Password
+@administrator_bp.route('/change_password', methods=['GET', 'POST'])
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def change_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        # Verify current password
+        if not bcrypt.check_password_hash(current_user.PASS, current_password):
+            flash('Current password is incorrect.', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+        # Validate new password
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+        if len(new_password) < 8:
+            flash('Password must be at least 8 characters long.', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+        # Update password
+        try:
+            hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+            current_user.PASS = hashed_password
+            db.session.commit()
+            log_audit_event("ADMIN_PASSWORD_CHANGE", f"Administrator {current_user.USERNAME} changed password")
+            flash('Password updated successfully!', 'success')
+            return redirect(url_for('administrator_bp.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred while updating your password', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+    return render_template('administrator/update_info.html', user=current_user)
