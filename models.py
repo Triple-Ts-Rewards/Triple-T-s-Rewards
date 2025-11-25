@@ -371,3 +371,11 @@ class PointRequest(db.Model):
     
     driver = db.relationship('Driver', backref='point_requests')
     organization = db.relationship('Organization', backref='point_requests')
+
+class WeeklyPointsLog(db.Model):
+    __tablename__ = 'WEEKLY_POINTS_LOG'
+    LOG_ID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    SPONSOR_ID = db.Column(db.Integer, db.ForeignKey('USERS.USER_CODE'), nullable=False)
+    DRIVER_ID = db.Column(db.Integer, db.ForeignKey('USERS.USER_CODE'), nullable=False)
+    POINTS = db.Column(db.Integer, nullable=False)
+    CREATED_AT = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
