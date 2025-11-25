@@ -2,12 +2,13 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from common.decorators import role_required
-from common.logging import log_audit_event, DRIVER_POINTS, DRIVER_DROPPED, log_driver_dropped
+from common.logging import log_audit_event, DRIVER_POINTS, DRIVER_DROPPED, log_driver_dropped, log_points_debit
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from extensions import db
-from models import AuditLog, User, Role, StoreSettings, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization, PointRequest
+from models import AuditLog, User, Role, StoreSettings, WeeklyPointsLog, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization, PointRequest
 from extensions import db, bcrypt
+from datetime import datetime, timedelta
 import secrets
 import string
 
@@ -361,10 +362,9 @@ def manage_points_page():
     # Calculate total and average points
     total_points = sum(d["points"] for d in driver_data)
     avg_points = round(total_points / len(driver_data), 2) if driver_data else 0
+    points_given_this_week = get_points_given_this_week(current_user.USER_CODE)
 
-    return render_template('sponsor/points.html', drivers=driver_data, total_points=total_points, avg_points=avg_points, current_sort=sort_by, search_query=search_query, status_filter=status_filter)
-
-
+    return render_template('sponsor/points.html', drivers=driver_data, total_points=total_points, avg_points=avg_points, points_given_this_week=points_given_this_week, current_sort=sort_by, search_query=search_query, status_filter=status_filter)
 
 
 @sponsor_bp.route('/points/<int:driver_id>', methods=['POST'])
@@ -381,6 +381,7 @@ def manage_points(driver_id):
     action = request.form.get('action')
     points = request.form.get('points', type=int)
     reason = request.form.get('reason', '').strip() or "No reason provided."
+    
 
     # Validate
     if not action or action not in ("award", "remove") or points is None or points <= 0:
@@ -408,6 +409,13 @@ def manage_points(driver_id):
         log_audit_event(
             DRIVER_POINTS,
             f"Sponsor {current_user.USERNAME} awarded {points} points to {driver.USERNAME}."
+        )
+        
+        log_points_debit(
+            order_id=None,
+            driver_user_id=driver.USER_CODE,
+            sponsor_user_id=current_user.USER_CODE,
+            points=points
         )
 
         if getattr(driver, "wants_point_notifications", False):
@@ -666,6 +674,45 @@ def dropped_drivers_report():
         org_id=org_id,
     )
 
+@sponsor_bp.route("/reports/weekly_points", methods=["GET"])
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def weekly_points_report():
+    sponsor_id = current_user.USER_CODE
+    one_week_ago = datetime.utcnow() - timedelta(days=7)
+    
+    logs = (
+        AuditLog.query.filter(
+            AuditLog.EVENT_TYPE == DRIVER_POINTS,
+            AuditLog.CREATED_AT >= one_week_ago,
+            AuditLog.DETAILS.ilike(f"%sponsor={sponsor_id}%")
+        ).order_by(AuditLog.CREATED_AT.desc()).all()
+    )
+    total = 0
+    parsed_logs = []
+    
+    for log in logs:
+        parts = log.DETAILS.split()
+        pts = 0
+        driver_id = None
+        
+        for p in parts:
+            if p.startswith("points_debited="):
+                pts = int(p.split("=")[1])
+            if p.startswith("driver_user_id="):
+                driver_id = int(p.split("=")[1])
+        
+        total += pts
+        parsed_logs.append({
+            "date": log.CREATED_AT,
+            "driver_id": driver_id,
+            "points": pts
+        })
+    return render_template(
+        "sponsor/weekly_points_report.html",
+        logs=parsed_logs,
+        total_points=total
+    )
 
 # POST /sponsor/drivers/<driver_id>/drop
 @sponsor_bp.route("/drivers/<int:driver_id>/drop", methods=["POST"], endpoint="drop_driver")
@@ -1071,3 +1118,13 @@ def organization_app_history():
         applications=applications,
         organization_name=sponsor.organization.ORG_NAME if sponsor.organization else "Your Organization"
     )
+    
+def get_points_given_this_week(sponsor_id):
+    today = datetime.utcnow()
+    start_of_week = today - timedelta(days=today.weekday())  # Monday
+    logs = WeeklyPointsLog.query.filter(
+        WeeklyPointsLog.SPONSOR_ID == sponsor_id,
+        WeeklyPointsLog.CREATED_AT >= start_of_week
+    ).all()
+    total_points = sum(log.POINTS for log in logs)
+    return total_points
