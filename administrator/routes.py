@@ -2,10 +2,11 @@ from urllib.parse import urlencode
 from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
 from flask_login import login_user, logout_user, login_required, current_user
 from common.decorators import role_required
-from models import User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS
+from models import DriverSponsorAssociation, User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS
 from extensions import db
+from extensions import bcrypt
 from sqlalchemy import or_
-from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL)
+from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL, ACCOUNT_DELETED)
 from datetime import datetime, timedelta
 from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization, DriverApplication
 import csv
@@ -251,6 +252,7 @@ def add_user():
         email = request.form['email']
         username = request.form['username']
         role = request.form['role']
+        org_id = request.form.get('organization_id')  # New organization field
 
         #split the name into first and last
         name_parts = name.split(' ', 1)
@@ -302,17 +304,29 @@ def add_user():
             driver = Driver(DRIVER_ID=new_user.USER_CODE, LICENSE_NUMBER="temp_license")
             db.session.add(driver)
         elif role == "sponsor":
-            # Create a temporary organization for this sponsor
-            temp_org = Organization(
-                ORG_NAME="Temp Organization - " + new_user.USERNAME,
-                STATUS="Pending",
-                CREATED_AT=datetime.utcnow()
-            )
-            db.session.add(temp_org)
-            db.session.flush()  # Get the ORG_ID
-            
-            sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=temp_org.ORG_ID)
-            db.session.add(sponsor)
+            if org_id:
+                # Validate the organization exists and is approved
+                selected_org = Organization.query.get(org_id)
+                if not selected_org:
+                    flash("Selected organization does not exist.", "danger")
+                    # Get organizations for the form on error
+                    organizations = Organization.query.filter_by(STATUS="Approved").order_by(Organization.ORG_NAME).all()
+                    return render_template('administrator/add_user.html', organizations=organizations)
+                
+                sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=selected_org.ORG_ID)
+                db.session.add(sponsor)
+            else:
+                # Create a temporary organization for this sponsor if no org selected
+                temp_org = Organization(
+                    ORG_NAME="Temp Organization - " + new_user.USERNAME,
+                    STATUS="Pending",
+                    CREATED_AT=datetime.utcnow()
+                )
+                db.session.add(temp_org)
+                db.session.flush()  # Get the ORG_ID
+                
+                sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=temp_org.ORG_ID)
+                db.session.add(sponsor)
         elif role == "admin":
             admin = Admin(ADMIN_ID=new_user.USER_CODE)
             db.session.add(admin)
@@ -322,7 +336,9 @@ def add_user():
         flash(f"User '{username}' created successfully with role '{role}' and code '{new_user_code}'.", "success")
         return redirect(url_for('administrator_bp.dashboard'))
 
-    return render_template('administrator/add_user.html')
+    # Get approved organizations for the dropdown
+    organizations = Organization.query.filter_by(STATUS="Approved").order_by(Organization.ORG_NAME).all()
+    return render_template('administrator/add_user.html', organizations=organizations)
 
 @administrator_bp.route('/locked_users', methods=['GET'])
 def locked_users():
@@ -488,6 +504,37 @@ def enable_user(user_id):
         
     return redirect(url_for('administrator_bp.accounts'))
 
+@administrator_bp.route('/delete_user/<int:user_id>', methods=['POST'])
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # Prevent admin from deleting themselves
+    if user.USER_CODE == current_user.USER_CODE:
+        flash("You cannot delete your own account.", "danger")
+        return redirect(url_for('administrator_bp.accounts'))
+
+    if user.USER_TYPE == Role.DRIVER:
+        DriverSponsorAssociation.query.filter_by(driver_id=user.USER_CODE).delete()
+        DriverApplication.query.filter_by(DRIVER_ID=user.USER_CODE).delete()
+        Driver.query.filter_by(DRIVER_ID=user.USER_CODE).delete()
+    
+    elif user.USER_TYPE == Role.SPONSOR:
+        Sponsor.query.filter_by(USER_CODE=user.USER_CODE).delete()
+    
+    elif user.USER_TYPE == Role.ADMINISTRATOR:
+        Admin.query.filter_by(ADMIN_ID=user.USER_CODE).delete()
+    
+    Notification.query.filter(or_(
+        Notification.RECIPIENT_CODE == user.USER_CODE,
+        Notification.SENDER_CODE == user.USER_CODE
+    )).delete()
+    
+    log_audit_event(ACCOUNT_DELETED, f"admin={current_user.USERNAME} deleted_user={user.USERNAME} code={user.USER_CODE}")
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'User **{user.USERNAME}** has been deleted.', 'info')
+    return redirect(url_for('administrator_bp.accounts'))
 
 @administrator_bp.route('/reset_user_password/<int:user_id>', methods=['POST'])
 @role_required(Role.ADMINISTRATOR, allow_admin=False)
@@ -590,3 +637,85 @@ def application_oversight():
     ).all()
     
     return render_template("administrator/application_oversight.html", applications=applications)
+
+
+# Update Contact Information
+@administrator_bp.route('/update_info', methods=['GET', 'POST'])
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def update_info():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        phone = request.form.get('phone', '').strip()
+
+        # Basic email validation
+        if not email or '@' not in email:
+            flash('Please enter a valid email address.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+
+        # Check if email already exists for another user
+        if User.query.filter(User.EMAIL == email, User.USER_CODE != current_user.USER_CODE).first():
+            flash('Email already in use.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+
+        # Basic phone validation (optional)
+        if phone and (not phone.isdigit() or len(phone) < 10):
+            flash('Please enter a valid phone number.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+        
+        # Check if phone already exists for another user
+        if phone and User.query.filter(User.PHONE == phone, User.USER_CODE != current_user.USER_CODE).first():
+            flash('Phone number already in use.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+        
+        try:
+            current_user.EMAIL = email
+            current_user.PHONE = phone
+
+            db.session.commit()
+            log_audit_event("ADMIN_INFO_UPDATE", f"Administrator {current_user.USERNAME} updated contact information")
+            flash('Contact information updated successfully!', 'success')
+            return redirect(url_for('administrator_bp.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred while updating your information', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+
+    return render_template('administrator/update_info.html', user=current_user)
+
+# Update Password
+@administrator_bp.route('/change_password', methods=['GET', 'POST'])
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def change_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        # Verify current password
+        if not bcrypt.check_password_hash(current_user.PASS, current_password):
+            flash('Current password is incorrect.', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+        # Validate new password
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+        if len(new_password) < 8:
+            flash('Password must be at least 8 characters long.', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+        # Update password
+        try:
+            hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+            current_user.PASS = hashed_password
+            db.session.commit()
+            log_audit_event("ADMIN_PASSWORD_CHANGE", f"Administrator {current_user.USERNAME} changed password")
+            flash('Password updated successfully!', 'success')
+            return redirect(url_for('administrator_bp.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred while updating your password', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+    return render_template('administrator/update_info.html', user=current_user)

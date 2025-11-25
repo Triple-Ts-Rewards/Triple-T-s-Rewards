@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="page-header">
+    <h1>Edit Account Information</h1>
+    <p class="text-muted" style="margin:0;">Update your contact details or change your password.</p>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Contact Information</h2>
+    </div>
+    <div class="org-card-body">
+      <form method="POST" action="{{ url_for('administrator_bp.update_info') }}" style="display:grid; gap:1rem; max-width:520px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" class="input" value="{{ current_user.EMAIL }}" required>
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="text" id="phone" name="phone" class="input" value="{{ current_user.PHONE or '' }}" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Apply Changes</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Change Password</h2>
+    </div>
+    <div class="org-card-body">
+      <form method="POST" action="{{ url_for('administrator_bp.change_password') }}" style="display:grid; gap:1rem; max-width:520px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label for="current_password">Current Password</label>
+          <input type="password" id="current_password" name="current_password" class="input" required>
+        </div>
+        <div class="form-group">
+          <label for="new_password">New Password</label>
+          <input type="password" id="new_password" name="new_password" class="input" required>
+        </div>
+        <div class="form-group">
+          <label for="confirm_password">Confirm New Password</label>
+          <input type="password" id="confirm_password" name="confirm_password" class="input" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Update Password</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card-elevated" style="margin-top:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Navigation</h2>
+    </div>
+    <div class="org-card-body" style="text-align:center;">
+      <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline">Back to Dashboard</a>
+    </div>
+  </div>
+{% endblock %}

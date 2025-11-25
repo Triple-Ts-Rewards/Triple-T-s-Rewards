@@ -1579,6 +1579,29 @@ body:not(.has-sidebar) .apply-form {
   color: #fff !important;
 }
 
+/* Status Badges */
+.badge-success {
+  background-color: #28a745 !important;
+  color: #fff !important;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 6px;
+  display: inline-block;
+  text-align: center;
+}
+
+.badge-danger {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 6px;
+  display: inline-block;
+  text-align: center;
+}
+
 .metric-card {
   display: flex;
   align-items: center;
