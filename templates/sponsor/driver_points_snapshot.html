@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1>Driver Points Snapshot</h1>
+      <p class="text-muted">Current balances, lifetime redemptions, and last purchase timestamps for your organization.</p>
+    </div>
+    <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+      <a class="btn btn-outline" href="{{ url_for('sponsor_bp.export_driver_points_report') }}" download>Download CSV</a>
+      <a class="btn btn-outline" href="{{ url_for('sponsor_bp.organization_reports_menu') }}">← Back to reports</a>
+    </div>
+  </div>
+
+  <div class="card-elevated" style="margin-bottom:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Totals{% if organization %} — {{ organization.ORG_NAME }}{% endif %}</h2>
+    </div>
+    <div class="org-card-body" style="display:flex; gap:2rem; flex-wrap:wrap;">
+      <div>
+        <p class="eyebrow">Drivers Tracked</p>
+        <p class="metric">{{ totals.drivers }}</p>
+      </div>
+      <div>
+        <p class="eyebrow">Current Points on Hand</p>
+        <p class="metric">{{ totals.current_balance }}</p>
+      </div>
+      <div>
+        <p class="eyebrow">Lifetime Points Redeemed</p>
+        <p class="metric">{{ totals.points_spent }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Drivers</h2>
+    </div>
+    <div class="org-card-body">
+      {% if stats %}
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Driver</th>
+                <th>Current Balance</th>
+                <th>Orders</th>
+                <th>Points Spent</th>
+                <th>Last Redemption</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user, balance, points_spent, sale_count, last_sale in stats %}
+                <tr>
+                  <td>{{ user.USERNAME }}<br><span class="text-muted">{{ user.FNAME }} {{ user.LNAME }}</span></td>
+                  <td>{{ balance }}</td>
+                  <td>{{ sale_count }}</td>
+                  <td>{{ points_spent }}</td>
+                  <td>{{ last_sale.strftime('%b %d, %Y %I:%M %p') if last_sale else '—' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted">No drivers found for this organization yet.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

@@ -1,16 +1,19 @@
 # triple-ts-rewards/triple-t-s-rewards/Triple-T-s-Rewards-72ca7a46f1915a7f669f3692e9b77d23b248eaee/sponsor/routes.py
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
 from flask_login import login_required, current_user
 from common.decorators import role_required
 from common.logging import log_audit_event, DRIVER_POINTS, DRIVER_DROPPED, log_driver_dropped, log_points_debit
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func, and_
 from extensions import db
-from models import AuditLog, User, Role, StoreSettings, WeeklyPointsLog, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization, PointRequest
+from models import AuditLog, User, Role, StoreSettings, WeeklyPointsLog, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization, PointRequest, DriverSale
 from extensions import db, bcrypt
 from datetime import datetime, timedelta
 import secrets
 import string
+from io import StringIO
+import csv
 
 # Blueprint for sponsor-related routes
 sponsor_bp = Blueprint('sponsor_bp', __name__, template_folder="../templates")
@@ -712,6 +715,95 @@ def weekly_points_report():
         "sponsor/weekly_points_report.html",
         logs=parsed_logs,
         total_points=total
+    )
+
+
+@sponsor_bp.get("/reports/driver_points/view")
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def driver_points_snapshot():
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor or not sponsor.ORG_ID:
+        flash("You must belong to an approved organization to view this report.", "warning")
+        return redirect(url_for('sponsor_bp.organization_reports_menu'))
+
+    stats = (
+        db.session.query(
+            User,
+            DriverSponsorAssociation.points.label('balance'),
+            func.coalesce(func.sum(DriverSale.POINTS_SPENT), 0).label('points_spent'),
+            func.count(DriverSale.SALE_ID).label('sale_count'),
+            func.max(DriverSale.CREATED_AT).label('last_sale_at')
+        )
+        .join(DriverSponsorAssociation, DriverSponsorAssociation.driver_id == User.USER_CODE)
+        .outerjoin(DriverSale, and_(DriverSale.DRIVER_ID == User.USER_CODE, DriverSale.ORG_ID == sponsor.ORG_ID))
+        .filter(DriverSponsorAssociation.ORG_ID == sponsor.ORG_ID)
+        .group_by(User, DriverSponsorAssociation.points)
+        .order_by(User.USERNAME.asc())
+    ).all()
+
+    totals = {
+        'drivers': len(stats),
+        'points_spent': sum(row.points_spent or 0 for row in stats),
+        'current_balance': sum(row.balance or 0 for row in stats)
+    }
+
+    return render_template(
+        "sponsor/driver_points_snapshot.html",
+        stats=stats,
+        totals=totals,
+        organization=sponsor.organization
+    )
+
+
+@sponsor_bp.get("/reports/driver_points/export")
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def export_driver_points_report():
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor or not sponsor.ORG_ID:
+        flash("You must belong to an approved organization to download this report.", "warning")
+        return redirect(url_for('sponsor_bp.organization_reports_menu'))
+
+    stats = (
+        db.session.query(
+            User.USER_CODE.label('driver_id'),
+            User.USERNAME.label('username'),
+            User.FNAME.label('fname'),
+            User.LNAME.label('lname'),
+            DriverSponsorAssociation.points.label('balance'),
+            func.coalesce(func.sum(DriverSale.POINTS_SPENT), 0).label('points_spent'),
+            func.count(DriverSale.SALE_ID).label('sale_count'),
+            func.max(DriverSale.CREATED_AT).label('last_sale_at')
+        )
+        .join(DriverSponsorAssociation, DriverSponsorAssociation.driver_id == User.USER_CODE)
+        .outerjoin(DriverSale, and_(DriverSale.DRIVER_ID == User.USER_CODE, DriverSale.ORG_ID == sponsor.ORG_ID))
+        .filter(DriverSponsorAssociation.ORG_ID == sponsor.ORG_ID)
+        .group_by(User.USER_CODE, User.USERNAME, User.FNAME, User.LNAME, DriverSponsorAssociation.points)
+        .order_by(User.USERNAME.asc())
+    ).all()
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Driver Username", "Driver Name", "Orders", "Points Spent", "Current Balance", "Last Sale"])
+    for row in stats:
+        last_sale = row.last_sale_at.strftime('%Y-%m-%d %H:%M:%S') if row.last_sale_at else ""
+        writer.writerow([
+            row.username,
+            f"{row.fname} {row.lname}",
+            row.sale_count,
+            row.points_spent,
+            row.balance,
+            last_sale
+        ])
+
+    org_slug = (sponsor.organization.ORG_NAME if sponsor.organization else f"org_{sponsor.ORG_ID}").replace(" ", "_")
+    filename = f"sponsor_report_{org_slug}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.csv"
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
     )
 
 # POST /sponsor/drivers/<driver_id>/drop

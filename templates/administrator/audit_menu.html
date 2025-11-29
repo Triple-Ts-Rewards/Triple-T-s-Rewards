@@ -20,9 +20,16 @@
       </tr>
       <tr>
         <td>Sales by Driver</td>
-        <td>Report of all sales by a driver.</td>
+        <td>Summary and detail views of sales grouped per driver.</td>
         <td class="actions">
-          <a href="{{ url_for('administrator_bp.view_audit_logs', event_type='sales_by_driver') }}" class="btn btn-outline">View</a>
+          <a href="{{ url_for('administrator_bp.sales_by_driver_report') }}" class="btn btn-outline">Open Report</a>
+        </td>
+      </tr>
+      <tr>
+        <td>Sales by Sponsor</td>
+        <td>Filterable report of sales per sponsor organization.</td>
+        <td class="actions">
+          <a href="{{ url_for('administrator_bp.sales_by_sponsor_report') }}" class="btn btn-outline">Open Report</a>
         </td>
       </tr>
       <tr>

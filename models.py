@@ -343,6 +343,19 @@ class WishlistItem(db.Model):
     points = db.Column(db.Integer, nullable=False)
     image_url = db.Column(db.String(255), nullable=True)
 
+class DriverSale(db.Model):
+    __tablename__ = 'DRIVER_SALES'
+    SALE_ID = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    DRIVER_ID = db.Column(db.Integer, db.ForeignKey('USERS.USER_CODE'), nullable=False)
+    ORG_ID = db.Column(db.Integer, db.ForeignKey('ORGANIZATIONS.ORG_ID'), nullable=False)
+    POINTS_SPENT = db.Column(db.Integer, nullable=False)
+    ITEM_COUNT = db.Column(db.Integer, nullable=False)
+    DETAILS = db.Column(db.Text, nullable=True)
+    CREATED_AT = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    driver = db.relationship('User', foreign_keys=[DRIVER_ID])
+    organization = db.relationship('Organization')
+
 class Organization(db.Model):
     __tablename__ = 'ORGANIZATIONS'
     ORG_ID = db.Column(db.Integer, primary_key=True, autoincrement=True)
