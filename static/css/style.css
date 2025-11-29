@@ -1320,20 +1320,21 @@ body:not(.has-sidebar) .homepage {
   padding: 3rem 1.5rem;
 }
 
-/* Ensure homepage is centered inside app-layout when no sidebar is visible */
+/* Ensure homepage is positioned properly when no sidebar is visible */
 body:not(.has-sidebar) .app-layout {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   flex-direction: column;
+  min-height: 100vh;
 }
 
 body:not(.has-sidebar) .app-main-content {
   width: 100%;
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: .5rem 1rem;
+  align-items: flex-start;
+  padding: 1rem;
 }
 
 body:not(.has-sidebar) .homepage {
@@ -1343,19 +1344,13 @@ body:not(.has-sidebar) .homepage {
   width: 100%;
 }
 
-/* Center login and other standalone forms when sidebar is hidden */
-body:not(.has-sidebar) .app-layout {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-
+/* Position login and other standalone forms when sidebar is hidden */
 body:not(.has-sidebar) .app-main-content {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   padding: 4rem 1rem;
+  padding-top: 6rem;
 }
 
 body:not(.has-sidebar) .apply-form {
