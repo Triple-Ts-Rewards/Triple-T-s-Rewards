@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Driver Sales Detail</p>
+      <h1>{{ driver.FNAME }} {{ driver.LNAME }} ({{ driver.USERNAME }})</h1>
+      <p class="text-muted">Drill into every redemption tied to this driver.</p>
+    </div>
+    <a href="{{ url_for('administrator_bp.sales_by_driver_report', start=start, end=end) }}" class="btn btn-outline">← Back to summary</a>
+  </div>
+
+  <form method="get" class="card-elevated" style="margin-bottom:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Filter by Date</h2>
+    </div>
+    <div class="org-card-body" style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-end;">
+      <input type="hidden" name="driver_id" value="{{ driver.USER_CODE }}">
+      <label style="display:flex; flex-direction:column;">
+        <span class="text-muted">Start Date</span>
+        <input type="date" name="start" value="{{ start or '' }}">
+      </label>
+      <label style="display:flex; flex-direction:column;">
+        <span class="text-muted">End Date</span>
+        <input type="date" name="end" value="{{ end or '' }}">
+      </label>
+      <button type="submit" class="btn btn-primary">Apply</button>
+      {% if start or end %}
+        <a href="{{ url_for('administrator_bp.sales_by_driver_detail', driver_id=driver.USER_CODE) }}" class="btn btn-outline">Clear</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Totals</h2>
+    </div>
+    <div class="org-card-body" style="display:flex; gap:2rem; flex-wrap:wrap;">
+      <div>
+        <p class="eyebrow">Orders</p>
+        <p class="metric">{{ totals.sale_count }}</p>
+      </div>
+      <div>
+        <p class="eyebrow">Points Spent</p>
+        <p class="metric">{{ totals.points_total }}</p>
+      </div>
+      <div>
+        <p class="eyebrow">Items Purchased</p>
+        <p class="metric">{{ totals.item_total }}</p>
+      </div>
+    </div>
+
+    <div class="org-card-body" style="padding-top:0;">
+      {% if sales %}
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Purchased</th>
+                <th>Sponsor</th>
+                <th>Points</th>
+                <th>Items</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in sales %}
+                <tr>
+                  <td>{{ entry.sale.CREATED_AT.strftime('%b %d, %Y %I:%M %p') }}</td>
+                  <td>{{ entry.sale.organization.ORG_NAME if entry.sale.organization else 'Unknown' }}</td>
+                  <td>{{ entry.sale.POINTS_SPENT }}</td>
+                  <td>
+                    <div><strong>{{ entry.sale.ITEM_COUNT }}</strong> item(s)</div>
+                    {% if entry.items %}
+                      <ul class="text-muted" style="margin:0.5rem 0 0 1.25rem;">
+                        {% for item in entry.items %}
+                          <li>{{ item.title }} — {{ item.points * item.quantity }} pts ({{ item.quantity }} × {{ item.points }})</li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted">No completed orders for this driver within the selected window.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

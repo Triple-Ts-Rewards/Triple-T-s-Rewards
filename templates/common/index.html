@@ -5,47 +5,70 @@
 {% block content %}
   <div class="page-header">
     <div>
-      <p class="eyebrow">Triple T's Trucking</p>
       <h1>Recognizing hard work, rewarding excellence</h1>
       <p class="text-muted">Your centralized hub for tracking points, requesting rewards, and celebrating milestones.</p>
     </div>
-    <div class="dashboard-actions" style="gap:0.75rem;">
-      <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Log In</a>
-      <a href="{{ url_for('auth.signup_page') }}" class="btn btn-outline">Sign Up</a>
-    </div>
   </div>
 
-  <div class="card-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.5rem;">
-    <div class="card-elevated">
-      <div class="card-header-accent">
-        <h2>Drivers</h2>
-      </div>
-      <div class="org-card-body">
-        <p>Log your deliveries, view your points, and redeem rewards designed for life on the road.</p>
-        <a href="{{ url_for('driver_bp.dashboard') }}" class="btn btn-link">Explore driver tools →</a>
-      </div>
-    </div>
+  {% if current_user.is_authenticated %}
+    <div class="card-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.5rem;">
+      {% set user_type = current_user.USER_TYPE|lower %}
 
-    <div class="card-elevated">
+      {% if user_type == 'driver' %}
+        <div class="card-elevated">
+          <div class="card-header-accent">
+            <h2>Drivers</h2>
+          </div>
+          <div class="org-card-body">
+            <p>Log your deliveries, view your points, and redeem rewards designed for life on the road.</p>
+            <a href="{{ url_for('driver_bp.dashboard') }}" class="btn btn-link">Explore driver tools →</a>
+          </div>
+        </div>
+      {% elif user_type == 'sponsor' %}
+        <div class="card-elevated">
+          <div class="card-header-accent">
+            <h2>Sponsors</h2>
+          </div>
+          <div class="org-card-body">
+            <p>Recognize top performers, drop personal notes, and view progress across your teams.</p>
+            <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-link">Manage sponsorships →</a>
+          </div>
+        </div>
+      {% elif user_type in ('administrator', 'admin') %}
+        <div class="card-elevated">
+          <div class="card-header-accent">
+            <h2>Administrators</h2>
+          </div>
+          <div class="org-card-body">
+            <p>Audit activity, approve applications, and keep the reward engine humming.</p>
+            <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-link">Go to admin panel →</a>
+          </div>
+        </div>
+      {% else %}
+        <div class="card-elevated">
+          <div class="card-header-accent">
+            <h2>Your Dashboard</h2>
+          </div>
+          <div class="org-card-body">
+            <p>We could not determine your dashboard type. Please contact support or log out and back in.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="card-elevated" style="margin-top:1.5rem;">
       <div class="card-header-accent">
-        <h2>Sponsors</h2>
+        <h2>Access Your Tools</h2>
       </div>
       <div class="org-card-body">
-        <p>Recognize top performers, drop personal notes, and view progress across your teams.</p>
-        <a href="{{ url_for('sponsor_bp.dashboard') }}" class="btn btn-link">Manage sponsorships →</a>
+        <p>Log in or create an account to access the tools tailored for drivers, sponsors, and administrators.</p>
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+          <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Log In</a>
+          <a href="{{ url_for('auth.signup_page') }}" class="btn btn-outline">Sign Up</a>
+        </div>
       </div>
     </div>
-
-    <div class="card-elevated">
-      <div class="card-header-accent">
-        <h2>Administrators</h2>
-      </div>
-      <div class="org-card-body">
-        <p>Audit activity, approve applications, and keep the reward engine humming.</p>
-        <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-link">Go to admin panel →</a>
-      </div>
-    </div>
-  </div>
+  {% endif %}
 
   <div class="card-elevated" style="margin-top:2rem;">
     <div class="card-header-accent">

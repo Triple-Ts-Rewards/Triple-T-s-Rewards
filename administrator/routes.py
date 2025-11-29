@@ -2,10 +2,10 @@ from urllib.parse import urlencode
 from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
 from flask_login import login_user, logout_user, login_required, current_user
 from common.decorators import role_required
-from models import DriverSponsorAssociation, User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS
+from models import DriverSponsorAssociation, User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS, DriverSale
 from extensions import db
 from extensions import bcrypt
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL, ACCOUNT_DELETED)
 from datetime import datetime, timedelta
 from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization, DriverApplication
@@ -13,9 +13,29 @@ import csv
 from io import StringIO
 from audit_types import AUDIT_CATEGORIES
 from common.logging import log_audit_event
+import json
 
 # Blueprint for administrator-related routes
 administrator_bp = Blueprint('administrator_bp', __name__, template_folder="../templates")
+
+
+def _parse_date_param(value: str):
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _apply_date_filters(query, column, start_dt, end_dt):
+    if start_dt:
+        query = query.filter(column >= start_dt)
+    if end_dt:
+        query = query.filter(column < end_dt + timedelta(days=1))
+    return query
 
 @administrator_bp.get("/audit_logs/export")
 @role_required(Role.ADMINISTRATOR, allow_admin=False)
@@ -234,6 +254,153 @@ def view_audit_logs():
         per_page=per_page,
         base_url=base_url,
         url_params_qs=url_params_qs,
+    )
+
+
+@administrator_bp.get('/reports/sales/drivers')
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def sales_by_driver_report():
+    start_str = request.args.get('start')
+    end_str = request.args.get('end')
+    start_dt = _parse_date_param(start_str)
+    end_dt = _parse_date_param(end_str)
+
+    points_total_expr = func.coalesce(func.sum(DriverSale.POINTS_SPENT), 0).label('points_total')
+    query = (
+        db.session.query(
+            DriverSale.DRIVER_ID.label('driver_id'),
+            User.USERNAME.label('username'),
+            User.FNAME.label('fname'),
+            User.LNAME.label('lname'),
+            func.count(DriverSale.SALE_ID).label('sale_count'),
+            points_total_expr,
+            func.max(DriverSale.CREATED_AT).label('last_sale_at')
+        )
+        .join(User, User.USER_CODE == DriverSale.DRIVER_ID)
+    )
+
+    query = _apply_date_filters(query, DriverSale.CREATED_AT, start_dt, end_dt)
+
+    driver_rows = (
+        query.group_by(DriverSale.DRIVER_ID, User.USERNAME, User.FNAME, User.LNAME)
+        .order_by(points_total_expr.desc())
+        .all()
+    )
+
+    totals = {
+        'sale_count': sum(row.sale_count for row in driver_rows),
+        'points_total': sum(row.points_total or 0 for row in driver_rows)
+    }
+
+    return render_template(
+        'administrator/sales_by_driver.html',
+        driver_rows=driver_rows,
+        start=start_str,
+        end=end_str,
+        totals=totals
+    )
+
+
+@administrator_bp.get('/reports/sales/drivers/<int:driver_id>')
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def sales_by_driver_detail(driver_id):
+    driver = User.query.get_or_404(driver_id)
+    start_str = request.args.get('start')
+    end_str = request.args.get('end')
+    start_dt = _parse_date_param(start_str)
+    end_dt = _parse_date_param(end_str)
+
+    query = DriverSale.query.filter(DriverSale.DRIVER_ID == driver_id)
+    query = _apply_date_filters(query, DriverSale.CREATED_AT, start_dt, end_dt)
+    sales = query.order_by(DriverSale.CREATED_AT.desc()).all()
+
+    parsed_sales = []
+    for sale in sales:
+        try:
+            items = json.loads(sale.DETAILS or '[]')
+        except ValueError:
+            items = []
+        parsed_sales.append({'sale': sale, 'items': items})
+
+    totals = {
+        'sale_count': len(parsed_sales),
+        'points_total': sum(sale['sale'].POINTS_SPENT for sale in parsed_sales),
+        'item_total': sum(sale['sale'].ITEM_COUNT for sale in parsed_sales)
+    }
+
+    return render_template(
+        'administrator/sales_by_driver_detail.html',
+        driver=driver,
+        sales=parsed_sales,
+        totals=totals,
+        start=start_str,
+        end=end_str
+    )
+
+
+@administrator_bp.get('/reports/sales/sponsors')
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def sales_by_sponsor_report():
+    start_str = request.args.get('start')
+    end_str = request.args.get('end')
+    selected_org_id = request.args.get('org_id', type=int)
+
+    start_dt = _parse_date_param(start_str)
+    end_dt = _parse_date_param(end_str)
+
+    points_total_expr = func.coalesce(func.sum(DriverSale.POINTS_SPENT), 0).label('points_total')
+    summary_query = (
+        db.session.query(
+            DriverSale.ORG_ID.label('org_id'),
+            Organization.ORG_NAME.label('org_name'),
+            func.count(DriverSale.SALE_ID).label('sale_count'),
+            points_total_expr,
+            func.max(DriverSale.CREATED_AT).label('last_sale_at')
+        )
+        .join(Organization, Organization.ORG_ID == DriverSale.ORG_ID)
+    )
+    summary_query = _apply_date_filters(summary_query, DriverSale.CREATED_AT, start_dt, end_dt)
+
+    summary_rows = (
+        summary_query.group_by(DriverSale.ORG_ID, Organization.ORG_NAME)
+        .order_by(Organization.ORG_NAME.asc())
+        .all()
+    )
+
+    totals = {
+        'sale_count': sum(row.sale_count for row in summary_rows),
+        'points_total': sum(row.points_total or 0 for row in summary_rows)
+    }
+
+    detail_sales = []
+    selected_org = None
+    if selected_org_id:
+        selected_org = Organization.query.get(selected_org_id)
+        detail_query = (
+            db.session.query(DriverSale, User)
+            .join(User, User.USER_CODE == DriverSale.DRIVER_ID)
+            .filter(DriverSale.ORG_ID == selected_org_id)
+        )
+        detail_query = _apply_date_filters(detail_query, DriverSale.CREATED_AT, start_dt, end_dt)
+        for sale, driver in detail_query.order_by(DriverSale.CREATED_AT.desc()).all():
+            try:
+                items = json.loads(sale.DETAILS or '[]')
+            except ValueError:
+                items = []
+            detail_sales.append({'sale': sale, 'driver': driver, 'items': items})
+
+    org_options = [{'id': row.org_id, 'name': row.org_name} for row in summary_rows]
+
+    return render_template(
+        'administrator/sales_by_sponsor.html',
+        summary_rows=summary_rows,
+        detail_sales=detail_sales,
+        totals=totals,
+        org_options=org_options,
+        selected_org=selected_org,
+        start=start_str,
+        end=end_str,
+        selected_org_id=selected_org_id
     )
 # Logout
 @administrator_bp.route('/logout')

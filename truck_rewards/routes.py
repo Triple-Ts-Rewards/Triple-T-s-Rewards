@@ -1,10 +1,12 @@
 from flask import Blueprint, render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
-from models import StoreSettings, CartItem, User, Notification, Address, WishlistItem, DriverSponsorAssociation, Sponsor
+from models import StoreSettings, CartItem, User, Notification, Address, WishlistItem, DriverSponsorAssociation, Sponsor, DriverSale
 from extensions import db
+from common.logging import log_audit_event, SALES_BY_DRIVER, SALES_BY_SPONSOR
 import requests
 import os
 import base64
+import json
 
 # --- Configuration Switch ---
 USE_SANDBOX = False 
@@ -279,6 +281,10 @@ def checkout():
         return redirect(url_for('driver_bp.dashboard'))
 
     cart_items = CartItem.query.filter_by(user_id=current_user.USER_CODE, ORG_ID=sponsor_id).all()
+    if not cart_items:
+        flash("Your cart is empty. Add items before checking out.", "warning")
+        return redirect(url_for('rewards_bp.view_cart', sponsor_id=sponsor_id))
+
     total_points = sum(item.points * item.quantity for item in cart_items)
 
     association = DriverSponsorAssociation.query.filter_by(
@@ -291,6 +297,36 @@ def checkout():
         return redirect(url_for('rewards_bp.view_cart', sponsor_id=sponsor_id))
 
     association.points -= total_points
+
+    sale_items = [
+        {
+            "title": item.title,
+            "points": item.points,
+            "quantity": item.quantity,
+            "price": item.price,
+            "item_id": item.item_id
+        }
+        for item in cart_items
+    ]
+
+    sale = DriverSale(
+        DRIVER_ID=current_user.USER_CODE,
+        ORG_ID=sponsor_id,
+        POINTS_SPENT=total_points,
+        ITEM_COUNT=len(cart_items),
+        DETAILS=json.dumps(sale_items)
+    )
+    db.session.add(sale)
+    db.session.flush()
+
+    log_audit_event(
+        SALES_BY_DRIVER,
+        f"sale_id={sale.SALE_ID} driver={current_user.USER_CODE} org={sponsor_id} points={total_points}"
+    )
+    log_audit_event(
+        SALES_BY_SPONSOR,
+        f"sale_id={sale.SALE_ID} org={sponsor_id} driver={current_user.USER_CODE} points={total_points}"
+    )
 
     # Get the list of items for the message
     item_summary_list = []
