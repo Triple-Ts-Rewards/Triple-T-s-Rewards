@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Disable Organizations - Admin{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Disable Organizations</h1>
+    <p class="text-danger" style="margin:0;">
+      <strong class="font-bold">CRITICAL ACTION:</strong> This process unlinks all entities from the selected organization.
+    </p>
+    <ul class="text-sm list-disc pl-5 mt-2 text-gray-700">
+        <li>The Organization's status will be set to 'Rejected'.</li>
+        <li>**All Sponsor roles linked to this organization will be removed.** (Sponsor User Accounts remain active).</li>
+        <li>**All Drivers linked to this organization will be dropped.** (Driver User Accounts remain active).</li>
+        <li>All pending and accepted driver applications will be marked as 'Rejected'.</li>
+        <li>Store settings and driver carts for this organization will be cleared.</li>
+    </ul>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent bg-red-600 text-white">
+      <h2>Select Organization to Disable</h2>
+    </div>
+    <div class="org-card-body">
+      <form method="POST" action="{{ url_for('administrator_bp.disable_organization') }}" style="display:grid; gap:1.5rem; max-width:600px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div class="form-group">
+          <label for="org_id" class="block text-lg font-medium text-gray-700">Active Organization:</label>
+          <select id="org_id" name="org_id" required 
+                  class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm rounded-md shadow-sm">
+            <option value="">-- Select Organization --</option>
+            {% for org in organizations %}
+              <option value="{{ org.ORG_ID }}">{{ org.ORG_NAME }} (ID: {{ org.ORG_ID }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {% if not organizations %}
+            <p class="text-blue-500">No organizations currently have an 'Approved' status.</p>
+        {% endif %}
+        
+        <button type="submit" 
+                class="btn bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-bold shadow-md disabled:opacity-50"
+                {% if not organizations %}disabled{% endif %}
+                onclick="return confirm('CRITICAL WARNING: This will unlink all sponsors and drivers from the selected organization. Continue?');">
+          Terminate Organization
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card-elevated" style="margin-top:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Navigation</h2>
+    </div>
+    <div class="org-card-body" style="text-align:center;">
+      <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline">← Back to Admin Dashboard</a>
+    </div>
+  </div>
+{% endblock %}
