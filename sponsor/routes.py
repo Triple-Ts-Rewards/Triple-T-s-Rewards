@@ -957,8 +957,20 @@ def update_info():
         sponsor = Sponsor.query.get(current_user.USER_CODE)
 
     if request.method == 'POST':
+        fname = request.form.get('fname').strip()
+        lname = request.form.get('lname').strip()
         email = request.form.get('email').strip()
         phone = request.form.get('phone').strip()
+
+        # Basic first name validation
+        if not fname or len(fname) < 1:
+            flash('Please enter your first name.', 'danger')
+            return redirect(url_for('sponsor_bp.update_info'))
+            
+        # Basic last name validation
+        if not lname or len(lname) < 1:
+            flash('Please enter your last name.', 'danger')
+            return redirect(url_for('sponsor_bp.update_info'))
 
         # Basic email validation
         if not email or '@' not in email:
@@ -981,6 +993,8 @@ def update_info():
             return redirect(url_for('sponsor_bp.update_info'))
         
         try:
+            current_user.FNAME = fname
+            current_user.LNAME = lname
             current_user.EMAIL = email
             current_user.PHONE = phone
 

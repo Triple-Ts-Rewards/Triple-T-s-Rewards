@@ -135,9 +135,21 @@ def update_contact():
         driver = Driver.query.get(current_user.USER_CODE)
 
     if request.method == 'POST':
+        fname = request.form.get('fname')
+        lname = request.form.get('lname')
         email = request.form.get('email')
         phone = request.form.get('phone')
         license_number = request.form.get('license_number') if driver else None
+
+        # Basic first name validation
+        if not fname or len(fname.strip()) < 1:
+            flash('Please enter your first name.', 'danger')
+            return redirect(url_for('driver_bp.update_info'))
+            
+        # Basic last name validation
+        if not lname or len(lname.strip()) < 1:
+            flash('Please enter your last name.', 'danger')
+            return redirect(url_for('driver_bp.update_info'))
 
         # Basic email validation
         if not email or '@' not in email:
@@ -160,6 +172,8 @@ def update_contact():
             return redirect(url_for('driver_bp.update_contact'))
 
         try:
+            current_user.FNAME = fname.strip() 
+            current_user.LNAME = lname.strip()
             current_user.EMAIL = email
             current_user.PHONE = phone
 

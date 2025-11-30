@@ -5,6 +5,24 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <h3>Contact Information</h3>
     <div class="form-group">
+      <label for="fname">First Name:</label>
+      <input type="text"
+              id="fname"
+              name="fname"
+              value="{{ current_user.FNAME }}"
+              required>
+    </div>
+
+    <div class="form-group">
+      <label for="lname">Last Name:</label>
+      <input type="text"
+              id="lname"
+              name="lname"
+              value="{{ current_user.LNAME }}"
+              required>
+    </div>
+    
+    <div class="form-group">
       <label for="email">Email Address:</label>
       <input type="email" 
               id="email" 
