@@ -2,19 +2,40 @@ from urllib.parse import urlencode
 from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
 from flask_login import login_user, logout_user, login_required, current_user
 from common.decorators import role_required
-from models import User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS
+from models import DriverSponsorAssociation, User, Role, AuditLog, Notification, LOCKOUT_ATTEMPTS, DriverSale
 from extensions import db
-from sqlalchemy import or_
-from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL)
+from extensions import bcrypt
+from sqlalchemy import or_, func
+from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL, ACCOUNT_DELETED)
 from datetime import datetime, timedelta
 from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization, DriverApplication
 import csv
 from io import StringIO
 from audit_types import AUDIT_CATEGORIES
 from common.logging import log_audit_event
+import json
 
 # Blueprint for administrator-related routes
 administrator_bp = Blueprint('administrator_bp', __name__, template_folder="../templates")
+
+
+def _parse_date_param(value: str):
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _apply_date_filters(query, column, start_dt, end_dt):
+    if start_dt:
+        query = query.filter(column >= start_dt)
+    if end_dt:
+        query = query.filter(column < end_dt + timedelta(days=1))
+    return query
 
 @administrator_bp.get("/audit_logs/export")
 @role_required(Role.ADMINISTRATOR, allow_admin=False)
@@ -234,6 +255,153 @@ def view_audit_logs():
         base_url=base_url,
         url_params_qs=url_params_qs,
     )
+
+
+@administrator_bp.get('/reports/sales/drivers')
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def sales_by_driver_report():
+    start_str = request.args.get('start')
+    end_str = request.args.get('end')
+    start_dt = _parse_date_param(start_str)
+    end_dt = _parse_date_param(end_str)
+
+    points_total_expr = func.coalesce(func.sum(DriverSale.POINTS_SPENT), 0).label('points_total')
+    query = (
+        db.session.query(
+            DriverSale.DRIVER_ID.label('driver_id'),
+            User.USERNAME.label('username'),
+            User.FNAME.label('fname'),
+            User.LNAME.label('lname'),
+            func.count(DriverSale.SALE_ID).label('sale_count'),
+            points_total_expr,
+            func.max(DriverSale.CREATED_AT).label('last_sale_at')
+        )
+        .join(User, User.USER_CODE == DriverSale.DRIVER_ID)
+    )
+
+    query = _apply_date_filters(query, DriverSale.CREATED_AT, start_dt, end_dt)
+
+    driver_rows = (
+        query.group_by(DriverSale.DRIVER_ID, User.USERNAME, User.FNAME, User.LNAME)
+        .order_by(points_total_expr.desc())
+        .all()
+    )
+
+    totals = {
+        'sale_count': sum(row.sale_count for row in driver_rows),
+        'points_total': sum(row.points_total or 0 for row in driver_rows)
+    }
+
+    return render_template(
+        'administrator/sales_by_driver.html',
+        driver_rows=driver_rows,
+        start=start_str,
+        end=end_str,
+        totals=totals
+    )
+
+
+@administrator_bp.get('/reports/sales/drivers/<int:driver_id>')
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def sales_by_driver_detail(driver_id):
+    driver = User.query.get_or_404(driver_id)
+    start_str = request.args.get('start')
+    end_str = request.args.get('end')
+    start_dt = _parse_date_param(start_str)
+    end_dt = _parse_date_param(end_str)
+
+    query = DriverSale.query.filter(DriverSale.DRIVER_ID == driver_id)
+    query = _apply_date_filters(query, DriverSale.CREATED_AT, start_dt, end_dt)
+    sales = query.order_by(DriverSale.CREATED_AT.desc()).all()
+
+    parsed_sales = []
+    for sale in sales:
+        try:
+            items = json.loads(sale.DETAILS or '[]')
+        except ValueError:
+            items = []
+        parsed_sales.append({'sale': sale, 'items': items})
+
+    totals = {
+        'sale_count': len(parsed_sales),
+        'points_total': sum(sale['sale'].POINTS_SPENT for sale in parsed_sales),
+        'item_total': sum(sale['sale'].ITEM_COUNT for sale in parsed_sales)
+    }
+
+    return render_template(
+        'administrator/sales_by_driver_detail.html',
+        driver=driver,
+        sales=parsed_sales,
+        totals=totals,
+        start=start_str,
+        end=end_str
+    )
+
+
+@administrator_bp.get('/reports/sales/sponsors')
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def sales_by_sponsor_report():
+    start_str = request.args.get('start')
+    end_str = request.args.get('end')
+    selected_org_id = request.args.get('org_id', type=int)
+
+    start_dt = _parse_date_param(start_str)
+    end_dt = _parse_date_param(end_str)
+
+    points_total_expr = func.coalesce(func.sum(DriverSale.POINTS_SPENT), 0).label('points_total')
+    summary_query = (
+        db.session.query(
+            DriverSale.ORG_ID.label('org_id'),
+            Organization.ORG_NAME.label('org_name'),
+            func.count(DriverSale.SALE_ID).label('sale_count'),
+            points_total_expr,
+            func.max(DriverSale.CREATED_AT).label('last_sale_at')
+        )
+        .join(Organization, Organization.ORG_ID == DriverSale.ORG_ID)
+    )
+    summary_query = _apply_date_filters(summary_query, DriverSale.CREATED_AT, start_dt, end_dt)
+
+    summary_rows = (
+        summary_query.group_by(DriverSale.ORG_ID, Organization.ORG_NAME)
+        .order_by(Organization.ORG_NAME.asc())
+        .all()
+    )
+
+    totals = {
+        'sale_count': sum(row.sale_count for row in summary_rows),
+        'points_total': sum(row.points_total or 0 for row in summary_rows)
+    }
+
+    detail_sales = []
+    selected_org = None
+    if selected_org_id:
+        selected_org = Organization.query.get(selected_org_id)
+        detail_query = (
+            db.session.query(DriverSale, User)
+            .join(User, User.USER_CODE == DriverSale.DRIVER_ID)
+            .filter(DriverSale.ORG_ID == selected_org_id)
+        )
+        detail_query = _apply_date_filters(detail_query, DriverSale.CREATED_AT, start_dt, end_dt)
+        for sale, driver in detail_query.order_by(DriverSale.CREATED_AT.desc()).all():
+            try:
+                items = json.loads(sale.DETAILS or '[]')
+            except ValueError:
+                items = []
+            detail_sales.append({'sale': sale, 'driver': driver, 'items': items})
+
+    org_options = [{'id': row.org_id, 'name': row.org_name} for row in summary_rows]
+
+    return render_template(
+        'administrator/sales_by_sponsor.html',
+        summary_rows=summary_rows,
+        detail_sales=detail_sales,
+        totals=totals,
+        org_options=org_options,
+        selected_org=selected_org,
+        start=start_str,
+        end=end_str,
+        selected_org_id=selected_org_id
+    )
 # Logout
 @administrator_bp.route('/logout')
 @login_required
@@ -251,6 +419,7 @@ def add_user():
         email = request.form['email']
         username = request.form['username']
         role = request.form['role']
+        org_id = request.form.get('organization_id')  # New organization field
 
         #split the name into first and last
         name_parts = name.split(' ', 1)
@@ -302,17 +471,29 @@ def add_user():
             driver = Driver(DRIVER_ID=new_user.USER_CODE, LICENSE_NUMBER="temp_license")
             db.session.add(driver)
         elif role == "sponsor":
-            # Create a temporary organization for this sponsor
-            temp_org = Organization(
-                ORG_NAME="Temp Organization - " + new_user.USERNAME,
-                STATUS="Pending",
-                CREATED_AT=datetime.utcnow()
-            )
-            db.session.add(temp_org)
-            db.session.flush()  # Get the ORG_ID
-            
-            sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=temp_org.ORG_ID)
-            db.session.add(sponsor)
+            if org_id:
+                # Validate the organization exists and is approved
+                selected_org = Organization.query.get(org_id)
+                if not selected_org:
+                    flash("Selected organization does not exist.", "danger")
+                    # Get organizations for the form on error
+                    organizations = Organization.query.filter_by(STATUS="Approved").order_by(Organization.ORG_NAME).all()
+                    return render_template('administrator/add_user.html', organizations=organizations)
+                
+                sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=selected_org.ORG_ID)
+                db.session.add(sponsor)
+            else:
+                # Create a temporary organization for this sponsor if no org selected
+                temp_org = Organization(
+                    ORG_NAME="Temp Organization - " + new_user.USERNAME,
+                    STATUS="Pending",
+                    CREATED_AT=datetime.utcnow()
+                )
+                db.session.add(temp_org)
+                db.session.flush()  # Get the ORG_ID
+                
+                sponsor = Sponsor(USER_CODE=new_user.USER_CODE, ORG_ID=temp_org.ORG_ID)
+                db.session.add(sponsor)
         elif role == "admin":
             admin = Admin(ADMIN_ID=new_user.USER_CODE)
             db.session.add(admin)
@@ -322,7 +503,9 @@ def add_user():
         flash(f"User '{username}' created successfully with role '{role}' and code '{new_user_code}'.", "success")
         return redirect(url_for('administrator_bp.dashboard'))
 
-    return render_template('administrator/add_user.html')
+    # Get approved organizations for the dropdown
+    organizations = Organization.query.filter_by(STATUS="Approved").order_by(Organization.ORG_NAME).all()
+    return render_template('administrator/add_user.html', organizations=organizations)
 
 @administrator_bp.route('/locked_users', methods=['GET'])
 def locked_users():
@@ -488,6 +671,37 @@ def enable_user(user_id):
         
     return redirect(url_for('administrator_bp.accounts'))
 
+@administrator_bp.route('/delete_user/<int:user_id>', methods=['POST'])
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # Prevent admin from deleting themselves
+    if user.USER_CODE == current_user.USER_CODE:
+        flash("You cannot delete your own account.", "danger")
+        return redirect(url_for('administrator_bp.accounts'))
+
+    if user.USER_TYPE == Role.DRIVER:
+        DriverSponsorAssociation.query.filter_by(driver_id=user.USER_CODE).delete()
+        DriverApplication.query.filter_by(DRIVER_ID=user.USER_CODE).delete()
+        Driver.query.filter_by(DRIVER_ID=user.USER_CODE).delete()
+    
+    elif user.USER_TYPE == Role.SPONSOR:
+        Sponsor.query.filter_by(USER_CODE=user.USER_CODE).delete()
+    
+    elif user.USER_TYPE == Role.ADMINISTRATOR:
+        Admin.query.filter_by(ADMIN_ID=user.USER_CODE).delete()
+    
+    Notification.query.filter(or_(
+        Notification.RECIPIENT_CODE == user.USER_CODE,
+        Notification.SENDER_CODE == user.USER_CODE
+    )).delete()
+    
+    log_audit_event(ACCOUNT_DELETED, f"admin={current_user.USERNAME} deleted_user={user.USERNAME} code={user.USER_CODE}")
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'User **{user.USERNAME}** has been deleted.', 'info')
+    return redirect(url_for('administrator_bp.accounts'))
 
 @administrator_bp.route('/reset_user_password/<int:user_id>', methods=['POST'])
 @role_required(Role.ADMINISTRATOR, allow_admin=False)
@@ -590,3 +804,85 @@ def application_oversight():
     ).all()
     
     return render_template("administrator/application_oversight.html", applications=applications)
+
+
+# Update Contact Information
+@administrator_bp.route('/update_info', methods=['GET', 'POST'])
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def update_info():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        phone = request.form.get('phone', '').strip()
+
+        # Basic email validation
+        if not email or '@' not in email:
+            flash('Please enter a valid email address.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+
+        # Check if email already exists for another user
+        if User.query.filter(User.EMAIL == email, User.USER_CODE != current_user.USER_CODE).first():
+            flash('Email already in use.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+
+        # Basic phone validation (optional)
+        if phone and (not phone.isdigit() or len(phone) < 10):
+            flash('Please enter a valid phone number.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+        
+        # Check if phone already exists for another user
+        if phone and User.query.filter(User.PHONE == phone, User.USER_CODE != current_user.USER_CODE).first():
+            flash('Phone number already in use.', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+        
+        try:
+            current_user.EMAIL = email
+            current_user.PHONE = phone
+
+            db.session.commit()
+            log_audit_event("ADMIN_INFO_UPDATE", f"Administrator {current_user.USERNAME} updated contact information")
+            flash('Contact information updated successfully!', 'success')
+            return redirect(url_for('administrator_bp.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred while updating your information', 'danger')
+            return redirect(url_for('administrator_bp.update_info'))
+
+    return render_template('administrator/update_info.html', user=current_user)
+
+# Update Password
+@administrator_bp.route('/change_password', methods=['GET', 'POST'])
+@role_required(Role.ADMINISTRATOR, allow_admin=False)
+def change_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        # Verify current password
+        if not bcrypt.check_password_hash(current_user.PASS, current_password):
+            flash('Current password is incorrect.', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+        # Validate new password
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+        if len(new_password) < 8:
+            flash('Password must be at least 8 characters long.', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+        # Update password
+        try:
+            hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+            current_user.PASS = hashed_password
+            db.session.commit()
+            log_audit_event("ADMIN_PASSWORD_CHANGE", f"Administrator {current_user.USERNAME} changed password")
+            flash('Password updated successfully!', 'success')
+            return redirect(url_for('administrator_bp.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred while updating your password', 'danger')
+            return redirect(url_for('administrator_bp.change_password'))
+
+    return render_template('administrator/update_info.html', user=current_user)

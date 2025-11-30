@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1>Sales by Sponsor</h1>
+      <p class="text-muted">Filter sales activity by sponsor organization and inspect individual driver orders.</p>
+    </div>
+    <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline">← Back to Admin Dashboard</a>
+  </div>
+
+  <form method="get" class="card-elevated" style="margin-bottom:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Filters</h2>
+    </div>
+    <div class="org-card-body" style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-end;">
+      <label style="display:flex; flex-direction:column;">
+        <span class="text-muted">Start Date</span>
+        <input type="date" name="start" value="{{ start or '' }}">
+      </label>
+      <label style="display:flex; flex-direction:column;">
+        <span class="text-muted">End Date</span>
+        <input type="date" name="end" value="{{ end or '' }}">
+      </label>
+      <label style="display:flex; flex-direction:column; min-width:220px;">
+        <span class="text-muted">Sponsor</span>
+        <select name="org_id">
+          <option value="">All sponsors</option>
+          {% for option in org_options %}
+            <option value="{{ option.id }}" {% if selected_org_id and option.id == selected_org_id %}selected{% endif %}>{{ option.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="btn btn-primary">Apply</button>
+      {% if start or end or selected_org_id %}
+        <a href="{{ url_for('administrator_bp.sales_by_sponsor_report') }}" class="btn btn-outline">Clear</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="card-elevated" style="margin-bottom:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Summary</h2>
+    </div>
+    <div class="org-card-body" style="display:flex; gap:2rem; flex-wrap:wrap;">
+      <div>
+        <p class="eyebrow">Total Sales</p>
+        <p class="metric">{{ totals.sale_count }}</p>
+      </div>
+      <div>
+        <p class="eyebrow">Total Points Redeemed</p>
+        <p class="metric">{{ totals.points_total }}</p>
+      </div>
+    </div>
+    <div class="org-card-body" style="padding-top:0;">
+      {% if summary_rows %}
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Sponsor</th>
+                <th>Orders</th>
+                <th>Points Spent</th>
+                <th>Last Sale</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in summary_rows %}
+                <tr>
+                  <td>{{ row.org_name }}</td>
+                  <td>{{ row.sale_count }}</td>
+                  <td>{{ row.points_total }}</td>
+                  <td>{{ row.last_sale_at.strftime('%b %d, %Y %I:%M %p') if row.last_sale_at else '—' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted">No sales to summarize for the selected window.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Detail{% if selected_org %} — {{ selected_org.ORG_NAME }}{% endif %}</h2>
+    </div>
+    <div class="org-card-body">
+      {% if selected_org_id and not detail_sales %}
+        <p class="text-muted">No sales found for the selected sponsor.</p>
+      {% elif not selected_org_id %}
+        <p class="text-muted">Choose a sponsor above to see individual driver orders.</p>
+      {% else %}
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Driver</th>
+                <th>Points</th>
+                <th>Items</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in detail_sales %}
+                <tr>
+                  <td>{{ entry.sale.CREATED_AT.strftime('%b %d, %Y %I:%M %p') }}</td>
+                  <td>{{ entry.driver.USERNAME }}<br><span class="text-muted">{{ entry.driver.FNAME }} {{ entry.driver.LNAME }}</span></td>
+                  <td>{{ entry.sale.POINTS_SPENT }}</td>
+                  <td>
+                    <div><strong>{{ entry.sale.ITEM_COUNT }}</strong> item(s)</div>
+                    {% if entry.items %}
+                      <ul class="text-muted" style="margin:0.5rem 0 0 1.25rem;">
+                        {% for item in entry.items %}
+                          <li>{{ item.title }} — {{ item.points * item.quantity }} pts ({{ item.quantity }} × {{ item.points }})</li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

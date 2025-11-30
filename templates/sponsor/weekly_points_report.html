@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1> Weekly Points Report </h1>
+<h3> Total Points Given This Week: {{ total_points }} </h3>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Driver Name</th>
+            <th>Points Given This Week</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in logs %}
+        <tr>
+            <td>{{ row.date.strftime("%Y-%m-%d") }}</td>
+            <td>{{ row.driver_id }}</td>
+            <td>{{ row.points }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

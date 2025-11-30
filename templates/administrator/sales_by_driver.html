@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1>Sales by Driver</h1>
+      <p class="text-muted">View total sales volume per driver and jump into a detailed breakdown when needed.</p>
+    </div>
+    <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline">← Back to Admin Dashboard</a>
+  </div>
+
+  <form method="get" class="card-elevated" style="margin-bottom:1.5rem;">
+    <div class="card-header-accent">
+      <h2>Filter by Date</h2>
+    </div>
+    <div class="org-card-body" style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-end;">
+      <label style="display:flex; flex-direction:column;">
+        <span class="text-muted">Start Date</span>
+        <input type="date" name="start" value="{{ start or '' }}">
+      </label>
+      <label style="display:flex; flex-direction:column;">
+        <span class="text-muted">End Date</span>
+        <input type="date" name="end" value="{{ end or '' }}">
+      </label>
+      <button type="submit" class="btn btn-primary">Apply</button>
+      {% if start or end %}
+        <a href="{{ url_for('administrator_bp.sales_by_driver_report') }}" class="btn btn-outline">Clear</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="card-elevated">
+    <div class="card-header-accent">
+      <h2>Summary</h2>
+    </div>
+    <div class="org-card-body" style="display:flex; gap:2rem; flex-wrap:wrap;">
+      <div>
+        <p class="eyebrow">Total Sales</p>
+        <p class="metric">{{ totals.sale_count }}</p>
+      </div>
+      <div>
+        <p class="eyebrow">Total Points Redeemed</p>
+        <p class="metric">{{ totals.points_total }}</p>
+      </div>
+    </div>
+
+    <div class="org-card-body" style="padding-top:0;">
+      {% if driver_rows %}
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Driver</th>
+                <th>Orders</th>
+                <th>Points Spent</th>
+                <th>Last Sale</th>
+                <th style="width:1%;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in driver_rows %}
+                <tr>
+                  <td>
+                    <strong>{{ row.username }}</strong><br>
+                    <span class="text-muted">{{ row.fname }} {{ row.lname }}</span>
+                  </td>
+                  <td>{{ row.sale_count }}</td>
+                  <td>{{ row.points_total }}</td>
+                  <td>{{ row.last_sale_at.strftime('%b %d, %Y %I:%M %p') if row.last_sale_at else '—' }}</td>
+                  <td>
+                    <a class="btn btn-outline"
+                       href="{{ url_for('administrator_bp.sales_by_driver_detail', driver_id=row.driver_id, start=start, end=end) }}">
+                      View Details
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted">No sales recorded for the selected window.</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

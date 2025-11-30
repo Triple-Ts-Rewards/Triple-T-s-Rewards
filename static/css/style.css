@@ -478,6 +478,57 @@ input:checked + .slider::before {
       color: var(--text-on-brand);
     }
   
+     .conversation-list {
+       display: flex;
+       flex-direction: column;
+       gap: 1rem;
+     }
+
+     .conversation-item {
+       display: flex;
+       justify-content: space-between;
+       gap: 1rem;
+       padding: 1rem;
+       border: 1px solid var(--border);
+       border-radius: 12px;
+       background: var(--surface);
+       align-items: flex-start;
+       flex-wrap: wrap;
+     }
+
+     .dm-thread {
+       display: flex;
+       flex-direction: column;
+       gap: 0.75rem;
+       max-height: 420px;
+       overflow-y: auto;
+     }
+
+     .dm-bubble {
+       padding: 0.75rem 1rem;
+       border-radius: 12px;
+       border: 1px solid var(--border);
+       background: var(--surface);
+       max-width: 75%;
+     }
+
+     .dm-bubble.from-me {
+       margin-left: auto;
+       background: var(--brand);
+       border-color: var(--brand);
+       color: var(--text-on-brand);
+     }
+
+     .dm-bubble.from-them {
+       margin-right: auto;
+     }
+
+     .dm-meta {
+       font-size: 0.8rem;
+       color: var(--text-muted, var(--text));
+       opacity: 0.8;
+     }
+
     .btn-outline {
       background: transparent;
       color: var(--text);
@@ -1526,6 +1577,29 @@ body:not(.has-sidebar) .apply-form {
 .badge-preview-remove {
   background-color: #dc3545 !important;
   color: #fff !important;
+}
+
+/* Status Badges */
+.badge-success {
+  background-color: #28a745 !important;
+  color: #fff !important;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 6px;
+  display: inline-block;
+  text-align: center;
+}
+
+.badge-danger {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 6px;
+  display: inline-block;
+  text-align: center;
 }
 
 .metric-card {

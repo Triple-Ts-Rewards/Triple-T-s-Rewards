@@ -27,7 +27,34 @@
             <option value="administrator">Admin</option>
         </select>
         <br><br>
+        
+        <!-- Organization selection for sponsors -->
+        <div id="organization-section" style="display: none;">
+            <label for="organization_id">Organization (Optional):</label>
+            <select id="organization_id" name="organization_id">
+                <option value="">-- Create New Temp Organization --</option>
+                {% for org in organizations %}
+                    <option value="{{ org.ORG_ID }}">{{ org.ORG_NAME }}</option>
+                {% endfor %}
+            </select>
+            <br><br>
+            <small class="text-muted">Select an existing approved organization or leave blank to create a temporary organization.</small>
+            <br><br>
+        </div>
+        
         <button type="submit" class="btn">Create User</button>
+        
+        <script>
+            // Show/hide organization section based on role selection
+            document.getElementById('role').addEventListener('change', function() {
+                const orgSection = document.getElementById('organization-section');
+                if (this.value === 'sponsor') {
+                    orgSection.style.display = 'block';
+                } else {
+                    orgSection.style.display = 'none';
+                }
+            });
+        </script>
     </form>
     <p><a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline">Back to Dashboard</a></p>
 {% endblock %}

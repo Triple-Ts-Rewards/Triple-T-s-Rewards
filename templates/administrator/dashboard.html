@@ -34,6 +34,10 @@
               <a href="{{ url_for('administrator_bp.locked_users') }}" class="btn-dash">
                   Unlock Accounts
               </a>
+
+              <a href="{{ url_for('administrator_bp.update_info') }}" class="btn-dash">
+                  Update Account Information
+              </a>
           </div>
       </div>
   </div>
@@ -74,6 +78,14 @@
 
               <a href="{{ url_for('administrator_bp.audit_menu') }}" class="btn-dash">
                   View Audit Logs
+              </a>
+
+              <a href="{{ url_for('administrator_bp.sales_by_sponsor_report') }}" class="btn-dash">
+                  Sales by Sponsor
+              </a>
+
+              <a href="{{ url_for('administrator_bp.sales_by_driver_report') }}" class="btn-dash">
+                  Sales by Driver
               </a>
 
           </div>

@@ -28,6 +28,21 @@
                   <a href="{{ url_for('sponsor_bp.dropped_drivers_report') }}" class="btn btn-outline">View</a>
                 </td>
               </tr>
+              <tr>
+                <td>Weekly Points Given</td>
+                <td>Summary of points awarded to drivers by your organization in the past week.</td>
+                <td>
+                  <a href="{{ url_for('sponsor_bp.weekly_points_report') }}" class="btn btn-outline">View</a>
+                </td>
+              </tr>
+              <tr>
+                <td>Driver Points Snapshot</td>
+                <td>View every driver’s current balance, sales count, and last redemption.</td>
+                <td>
+                  <a href="{{ url_for('sponsor_bp.driver_points_snapshot') }}"
+                     class="btn btn-outline">View</a>
+                </td>
+              </tr>
             </tbody>
           </table>
       </div>

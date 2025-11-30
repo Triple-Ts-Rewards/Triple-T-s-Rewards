@@ -1,15 +1,19 @@
 # triple-ts-rewards/triple-t-s-rewards/Triple-T-s-Rewards-72ca7a46f1915a7f669f3692e9b77d23b248eaee/sponsor/routes.py
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
 from flask_login import login_required, current_user
 from common.decorators import role_required
-from common.logging import log_audit_event, DRIVER_POINTS, DRIVER_DROPPED, log_driver_dropped
+from common.logging import log_audit_event, DRIVER_POINTS, DRIVER_DROPPED, log_driver_dropped, log_points_debit
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func, and_
 from extensions import db
-from models import AuditLog, User, Role, StoreSettings, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization, PointRequest
+from models import AuditLog, User, Role, StoreSettings, WeeklyPointsLog, db, DriverApplication, Sponsor, Notification, DriverSponsorAssociation, Driver, Organization, PointRequest, DriverSale
 from extensions import db, bcrypt
+from datetime import datetime, timedelta
 import secrets
 import string
+from io import StringIO
+import csv
 
 # Blueprint for sponsor-related routes
 sponsor_bp = Blueprint('sponsor_bp', __name__, template_folder="../templates")
@@ -181,15 +185,89 @@ def create_sponsor_user():
 @sponsor_bp.route("/users", methods=["GET"])
 @role_required(Role.SPONSOR, allow_admin=True)
 def list_sponsor_users():
-    sponsors = User.query.filter_by(USER_TYPE=Role.SPONSOR).order_by(User.USERNAME.asc()).all()
+    # Get current sponsor's organization ID
+    current_sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not current_sponsor or not current_sponsor.ORG_ID:
+        flash("You must belong to an organization to view other sponsors.", "warning")
+        return redirect(url_for('sponsor_bp.dashboard'))
+    
+    # Query sponsors in the same organization
+    sponsors = User.query.join(Sponsor).filter(
+        User.USER_TYPE == Role.SPONSOR,
+        Sponsor.ORG_ID == current_sponsor.ORG_ID
+    ).order_by(User.USERNAME.asc()).all()
+    
     return render_template("sponsor/list_users.html", users=sponsors)
+
+@sponsor_bp.route("/users/<int:user_id>/toggle_status", methods=["POST"])
+@role_required(Role.SPONSOR, allow_admin=True)
+def toggle_sponsor_status(user_id):
+    """Toggle the active status of a sponsor user in the same organization"""
+    # Get current sponsor's organization ID
+    current_sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not current_sponsor or not current_sponsor.ORG_ID:
+        flash("You must belong to an organization to manage other sponsors.", "warning")
+        return redirect(url_for('sponsor_bp.list_sponsor_users'))
+    
+    # Get the target user
+    target_user = User.query.get_or_404(user_id)
+    
+    # Prevent sponsors from disabling themselves
+    if target_user.USER_CODE == current_user.USER_CODE:
+        flash("You cannot disable your own account.", "danger")
+        return redirect(url_for('sponsor_bp.list_sponsor_users'))
+    
+    # Verify the target user is a sponsor in the same organization
+    target_sponsor = Sponsor.query.filter_by(USER_CODE=target_user.USER_CODE).first()
+    if not target_sponsor or target_sponsor.ORG_ID != current_sponsor.ORG_ID:
+        flash("You can only manage sponsors in your organization.", "danger")
+        return redirect(url_for('sponsor_bp.list_sponsor_users'))
+    
+    # Verify the target user is actually a sponsor
+    if target_user.USER_TYPE != Role.SPONSOR:
+        flash("You can only manage sponsor accounts.", "danger")
+        return redirect(url_for('sponsor_bp.list_sponsor_users'))
+    
+    try:
+        # Toggle the account status
+        if target_user.IS_ACTIVE == 1:
+            target_user.IS_ACTIVE = 0
+            action = "disabled"
+        else:
+            target_user.IS_ACTIVE = 1
+            action = "enabled"
+        
+        db.session.commit()
+        
+        # Log the event
+        log_audit_event(
+            "SPONSOR_ACCOUNT_STATUS_CHANGE",
+            f"Sponsor {current_user.USERNAME} {action} sponsor account {target_user.USERNAME}"
+        )
+        
+        # Send notification to the affected user if they want security notifications
+        if getattr(target_user, "wants_security_notifications", True):
+            Notification.create_notification(
+                recipient_code=target_user.USER_CODE,
+                sender_code=current_user.USER_CODE,
+                message=f"Your account has been {action} by {current_user.USERNAME}."
+            )
+        
+        flash(f"✅ Successfully {action} account for {target_user.USERNAME}.", "success")
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error toggling sponsor status: {str(e)}")  # For debugging
+        flash(f"An error occurred while updating the account status: {str(e)}", "danger")
+    
+    return redirect(url_for('sponsor_bp.list_sponsor_users'))
 
 
 # Dashboard
 @sponsor_bp.route('/dashboard')
 @role_required(Role.SPONSOR, allow_admin=True)
 def dashboard():
-    # --- ADD THIS LOGIC ---
+
     # Fetch the sponsor record for the current user
     sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
     organization = None
@@ -198,7 +276,6 @@ def dashboard():
     
     # Pass the sponsor and organization objects to the template
     return render_template('sponsor/dashboard.html', sponsor=sponsor, organization=organization)
-    # --- END OF CHANGE ---
 
 # Update Store Settings
 @sponsor_bp.route('/settings', methods=['GET', 'POST'])
@@ -288,10 +365,9 @@ def manage_points_page():
     # Calculate total and average points
     total_points = sum(d["points"] for d in driver_data)
     avg_points = round(total_points / len(driver_data), 2) if driver_data else 0
+    points_given_this_week = get_points_given_this_week(current_user.USER_CODE)
 
-    return render_template('sponsor/points.html', drivers=driver_data, total_points=total_points, avg_points=avg_points, current_sort=sort_by, search_query=search_query, status_filter=status_filter)
-
-
+    return render_template('sponsor/points.html', drivers=driver_data, total_points=total_points, avg_points=avg_points, points_given_this_week=points_given_this_week, current_sort=sort_by, search_query=search_query, status_filter=status_filter)
 
 
 @sponsor_bp.route('/points/<int:driver_id>', methods=['POST'])
@@ -308,6 +384,7 @@ def manage_points(driver_id):
     action = request.form.get('action')
     points = request.form.get('points', type=int)
     reason = request.form.get('reason', '').strip() or "No reason provided."
+    
 
     # Validate
     if not action or action not in ("award", "remove") or points is None or points <= 0:
@@ -335,6 +412,13 @@ def manage_points(driver_id):
         log_audit_event(
             DRIVER_POINTS,
             f"Sponsor {current_user.USERNAME} awarded {points} points to {driver.USERNAME}."
+        )
+        
+        log_points_debit(
+            order_id=None,
+            driver_user_id=driver.USER_CODE,
+            sponsor_user_id=current_user.USER_CODE,
+            points=points
         )
 
         if getattr(driver, "wants_point_notifications", False):
@@ -593,6 +677,134 @@ def dropped_drivers_report():
         org_id=org_id,
     )
 
+@sponsor_bp.route("/reports/weekly_points", methods=["GET"])
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def weekly_points_report():
+    sponsor_id = current_user.USER_CODE
+    one_week_ago = datetime.utcnow() - timedelta(days=7)
+    
+    logs = (
+        AuditLog.query.filter(
+            AuditLog.EVENT_TYPE == DRIVER_POINTS,
+            AuditLog.CREATED_AT >= one_week_ago,
+            AuditLog.DETAILS.ilike(f"%sponsor={sponsor_id}%")
+        ).order_by(AuditLog.CREATED_AT.desc()).all()
+    )
+    total = 0
+    parsed_logs = []
+    
+    for log in logs:
+        parts = log.DETAILS.split()
+        pts = 0
+        driver_id = None
+        
+        for p in parts:
+            if p.startswith("points_debited="):
+                pts = int(p.split("=")[1])
+            if p.startswith("driver_user_id="):
+                driver_id = int(p.split("=")[1])
+        
+        total += pts
+        parsed_logs.append({
+            "date": log.CREATED_AT,
+            "driver_id": driver_id,
+            "points": pts
+        })
+    return render_template(
+        "sponsor/weekly_points_report.html",
+        logs=parsed_logs,
+        total_points=total
+    )
+
+
+@sponsor_bp.get("/reports/driver_points/view")
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def driver_points_snapshot():
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor or not sponsor.ORG_ID:
+        flash("You must belong to an approved organization to view this report.", "warning")
+        return redirect(url_for('sponsor_bp.organization_reports_menu'))
+
+    stats = (
+        db.session.query(
+            User,
+            DriverSponsorAssociation.points.label('balance'),
+            func.coalesce(func.sum(DriverSale.POINTS_SPENT), 0).label('points_spent'),
+            func.count(DriverSale.SALE_ID).label('sale_count'),
+            func.max(DriverSale.CREATED_AT).label('last_sale_at')
+        )
+        .join(DriverSponsorAssociation, DriverSponsorAssociation.driver_id == User.USER_CODE)
+        .outerjoin(DriverSale, and_(DriverSale.DRIVER_ID == User.USER_CODE, DriverSale.ORG_ID == sponsor.ORG_ID))
+        .filter(DriverSponsorAssociation.ORG_ID == sponsor.ORG_ID)
+        .group_by(User, DriverSponsorAssociation.points)
+        .order_by(User.USERNAME.asc())
+    ).all()
+
+    totals = {
+        'drivers': len(stats),
+        'points_spent': sum(row.points_spent or 0 for row in stats),
+        'current_balance': sum(row.balance or 0 for row in stats)
+    }
+
+    return render_template(
+        "sponsor/driver_points_snapshot.html",
+        stats=stats,
+        totals=totals,
+        organization=sponsor.organization
+    )
+
+
+@sponsor_bp.get("/reports/driver_points/export")
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def export_driver_points_report():
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor or not sponsor.ORG_ID:
+        flash("You must belong to an approved organization to download this report.", "warning")
+        return redirect(url_for('sponsor_bp.organization_reports_menu'))
+
+    stats = (
+        db.session.query(
+            User.USER_CODE.label('driver_id'),
+            User.USERNAME.label('username'),
+            User.FNAME.label('fname'),
+            User.LNAME.label('lname'),
+            DriverSponsorAssociation.points.label('balance'),
+            func.coalesce(func.sum(DriverSale.POINTS_SPENT), 0).label('points_spent'),
+            func.count(DriverSale.SALE_ID).label('sale_count'),
+            func.max(DriverSale.CREATED_AT).label('last_sale_at')
+        )
+        .join(DriverSponsorAssociation, DriverSponsorAssociation.driver_id == User.USER_CODE)
+        .outerjoin(DriverSale, and_(DriverSale.DRIVER_ID == User.USER_CODE, DriverSale.ORG_ID == sponsor.ORG_ID))
+        .filter(DriverSponsorAssociation.ORG_ID == sponsor.ORG_ID)
+        .group_by(User.USER_CODE, User.USERNAME, User.FNAME, User.LNAME, DriverSponsorAssociation.points)
+        .order_by(User.USERNAME.asc())
+    ).all()
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Driver Username", "Driver Name", "Orders", "Points Spent", "Current Balance", "Last Sale"])
+    for row in stats:
+        last_sale = row.last_sale_at.strftime('%Y-%m-%d %H:%M:%S') if row.last_sale_at else ""
+        writer.writerow([
+            row.username,
+            f"{row.fname} {row.lname}",
+            row.sale_count,
+            row.points_spent,
+            row.balance,
+            last_sale
+        ])
+
+    org_slug = (sponsor.organization.ORG_NAME if sponsor.organization else f"org_{sponsor.ORG_ID}").replace(" ", "_")
+    filename = f"sponsor_report_{org_slug}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.csv"
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
 
 # POST /sponsor/drivers/<driver_id>/drop
 @sponsor_bp.route("/drivers/<int:driver_id>/drop", methods=["POST"], endpoint="drop_driver")
@@ -998,3 +1210,13 @@ def organization_app_history():
         applications=applications,
         organization_name=sponsor.organization.ORG_NAME if sponsor.organization else "Your Organization"
     )
+    
+def get_points_given_this_week(sponsor_id):
+    today = datetime.utcnow()
+    start_of_week = today - timedelta(days=today.weekday())  # Monday
+    logs = WeeklyPointsLog.query.filter(
+        WeeklyPointsLog.SPONSOR_ID == sponsor_id,
+        WeeklyPointsLog.CREATED_AT >= start_of_week
+    ).all()
+    total_points = sum(log.POINTS for log in logs)
+    return total_points

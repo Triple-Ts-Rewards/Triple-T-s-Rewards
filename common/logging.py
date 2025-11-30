@@ -1,5 +1,5 @@
 from extensions import db
-from models import AuditLog
+from models import AuditLog , WeeklyPointsLog
 import logging
 from datetime import datetime
 
@@ -17,6 +17,7 @@ ADMIN_TIMEOUT_EVENT = "ADMIN_TIMEOUT"
 ADMIN_CLEAR_TIMEOUT = "ADMIN_CLEAR_TIMEOUT"
 ACCOUNT_UNLOCKED = "ACCOUNT_UNLOCKED"
 ACCOUNT_UNLOCKED_ALL = "ACCOUNT_UNLOCKED_ALL"
+ACCOUNT_DELETED = "ACCOUNT_DELETED"
 
 
 logging.basicConfig(level=logging.INFO)
@@ -38,3 +39,15 @@ def log_driver_dropped(*, sponsor_id:int, org_id:int, driver_id:int):
     """
     details = f"sponsor={sponsor_id} org={org_id} driver={driver_id}"
     return log_audit_event(DRIVER_DROPPED, details)
+
+def log_points_debit(order_id: int, driver_user_id: int, sponsor_user_id: int, points: int):
+    log = WeeklyPointsLog(
+        SPONSOR_ID = sponsor_user_id,
+        DRIVER_ID = driver_user_id,
+        POINTS = points,
+        CREATED_AT = datetime.utcnow(),
+    )
+    db.session.add(log)
+    db.session.commit()
+    logging.info("POINTS DEBIT: order=%d sponsor=%d driver=%d points=%d", order_id, sponsor_user_id, driver_user_id, points)
+    return log
