@@ -60,6 +60,13 @@
           <a href="{{ url_for('administrator_bp.view_audit_logs', event_type='access_changes') }}" class="btn btn-outline">View</a>
         </td>
       </tr>
+      <tr>
+        <td>Dropped Drivers</td>
+        <td>Record of dropped drivers across all organizations.</td>
+        <td class="actions">
+          <a href="{{ url_for('administrator_bp.dropped_drivers_report_global') }}" class="btn btn-outline">View</a>
+        </td>
+      </tr>
     </tbody>
   </table>
 

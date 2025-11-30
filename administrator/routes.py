@@ -811,8 +811,20 @@ def application_oversight():
 @role_required(Role.ADMINISTRATOR, allow_admin=False)
 def update_info():
     if request.method == 'POST':
+        fname = request.form.get('fname').strip()
+        lname = request.form.get('lname').strip()
         email = request.form.get('email', '').strip()
         phone = request.form.get('phone', '').strip()
+
+        # Basic first name validation
+        if not fname or len(fname) < 1:
+            flash('Please enter your first name.', 'danger')
+            return redirect(url_for('sponsor_bp.update_info'))
+            
+        # Basic last name validation
+        if not lname or len(lname) < 1:
+            flash('Please enter your last name.', 'danger')
+            return redirect(url_for('sponsor_bp.update_info'))
 
         # Basic email validation
         if not email or '@' not in email:
@@ -835,6 +847,8 @@ def update_info():
             return redirect(url_for('administrator_bp.update_info'))
         
         try:
+            current_user.FNAME = fname
+            current_user.LNAME = lname
             current_user.EMAIL = email
             current_user.PHONE = phone
 
@@ -886,3 +900,58 @@ def change_password():
             return redirect(url_for('administrator_bp.change_password'))
 
     return render_template('administrator/update_info.html', user=current_user)
+
+# Displays a global report of all drivers dropped across all organizations. This view is restricted to Admin users.
+@administrator_bp.get("/reports/dropped_drivers")
+@login_required
+@role_required(Role.ADMINISTRATOR)
+def dropped_drivers_report_global():
+    
+    # Pull all audit logs where EVENT_TYPE = DRIVER_DROPPED (Global Scope)
+    # No filtering by ORG_ID is applied here.
+    rows = (
+        AuditLog.query
+        .filter(AuditLog.EVENT_TYPE == DRIVER_DROPPED)
+        .order_by(AuditLog.CREATED_AT.desc())
+        .all()
+    )
+
+    # 2. Parse out driver / sponsor / org ids and join to User for display
+    parsed = []
+    for row in rows:
+        parts = {}
+        # Parse the space-separated key=value pairs in the DETAILS string
+        for token in (row.DETAILS or "").split():
+            if "=" in token:
+                k, v = token.split("=", 1)
+                parts[k] = v
+
+        driver_user = None
+        sponsor_user = None
+        
+        # Safely extract IDs and ORG_ID from parsed details
+        try:
+            driver_id = int(parts.get("driver", "0"))
+            sponsor_id = int(parts.get("sponsor", "0"))
+            org_id = parts.get("org_id", parts.get("org", "N/A")) 
+        except ValueError:
+            driver_id = sponsor_id = 0
+            org_id = "N/A" # Default
+        
+        # Look up User objects
+        if driver_id:
+            driver_user = User.query.get(driver_id)
+        if sponsor_id:
+            sponsor_user = User.query.get(sponsor_id)
+
+        parsed.append({
+            "log": row,
+            "driver": driver_user,
+            "sponsor": sponsor_user,
+            "org_id": org_id, # for context
+        })
+
+    return render_template(
+        "administrator/report_driversdropped.html",
+        rows=parsed,
+    )
