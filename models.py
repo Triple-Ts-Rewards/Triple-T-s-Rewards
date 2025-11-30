@@ -13,6 +13,7 @@ from itsdangerous import URLSafeTimedSerializer
 
 LOCKOUT_ATTEMPTS = 3
 WORDS = list(english_words_set)
+ORG_DISABLED = "ORG_DISABLED"
 
 class AuditLog(db.Model):
     __tablename__ = 'AUDIT_LOG'

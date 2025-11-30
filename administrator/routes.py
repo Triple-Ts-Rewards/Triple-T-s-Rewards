@@ -8,7 +8,7 @@ from extensions import bcrypt
 from sqlalchemy import or_, func
 from common.logging import (LOGIN_EVENT, SALES_BY_SPONSOR, SALES_BY_DRIVER, INVOICE_EVENT, DRIVER_POINTS, log_audit_event, DRIVER_DROPPED, ACCOUNT_DISABLED, ACCOUNT_ENABLED, ADMIN_TIMEOUT_EVENT, ADMIN_CLEAR_TIMEOUT, ACCOUNT_UNLOCKED, ACCOUNT_UNLOCKED_ALL, ACCOUNT_DELETED)
 from datetime import datetime, timedelta
-from models import db, Sponsor, Driver, Admin,  User, Role, AuditLog, Organization, DriverApplication
+from models import db, Sponsor, Driver, Admin, User, Role, AuditLog, Organization, DriverApplication, DriverSponsorAssociation, StoreSettings, CartItem, Notification, ORG_DISABLED
 import csv
 from io import StringIO
 from audit_types import AUDIT_CATEGORIES
@@ -954,4 +954,101 @@ def dropped_drivers_report_global():
     return render_template(
         "administrator/report_driversdropped.html",
         rows=parsed,
+    )
+
+#  Allows the Admin to disable an organization, cascading changes to relationships without deactivating user accounts.
+@administrator_bp.route('/organizations/disable', methods=['GET', 'POST'])
+@login_required
+@role_required(Role.ADMINISTRATOR)
+def disable_organization():
+
+    # Fetch all *Approved* organizations
+    active_organizations = Organization.query.filter_by(STATUS='Approved').order_by(Organization.ORG_NAME).all()
+    
+    if request.method == 'POST':
+        org_id_str = request.form.get('org_id')
+        
+        if not org_id_str or not org_id_str.isdigit():
+            flash("Invalid Organization selected.", "danger")
+            return redirect(url_for('administrator_bp.disable_organization'))
+        
+        org_id = int(org_id_str)
+        organization = Organization.query.get(org_id)
+        
+        if not organization or organization.STATUS != 'Approved':
+            flash(f"Organization ID {org_id} is not an active organization.", "danger")
+            return redirect(url_for('administrator_bp.disable_organization'))
+
+        org_name = organization.ORG_NAME # Capture name for logging and notification
+
+        try:
+            # Soft disable the organization
+            # Using 'Rejected' status
+            organization.STATUS = 'Rejected' 
+            
+            # Get driver IDs to notify before deleting associations
+            drivers_to_notify = DriverSponsorAssociation.query.filter_by(ORG_ID=org_id).all()
+            driver_codes_notified = [assoc.driver_id for assoc in drivers_to_notify]
+            driver_drop_count = len(drivers_to_notify)
+
+            # Get sponsor IDs to notify
+            sponsor_users = Sponsor.query.filter_by(ORG_ID=org_id).all()
+            sponsor_codes_notified = [s.USER_CODE for s in sponsor_users]
+            sponsor_drop_count = len(sponsor_users)
+
+            # Drop Sponsors (delete Sponsor records, preserving User accounts)
+            Sponsor.query.filter_by(ORG_ID=org_id).delete(synchronize_session='fetch')
+            
+            # Drop Drivers (delete DriverSponsorAssociation records)
+            DriverSponsorAssociation.query.filter_by(ORG_ID=org_id).delete(synchronize_session='fetch')
+            
+            # Clear Store Settings (Unique key constraint means this must be deleted)
+            StoreSettings.query.filter_by(ORG_ID=org_id).delete(synchronize_session='fetch')
+            
+            # Clear Cart Items (Users cannot buy from a disabled store)
+            CartItem.query.filter_by(ORG_ID=org_id).delete(synchronize_session='fetch')
+
+            # Terminate Pending/Accepted Driver Applications
+            # Update status to 'Rejected' for records still linked to this org
+            terminated_apps_count = DriverApplication.query.filter(
+                DriverApplication.ORG_ID == org_id,
+                DriverApplication.STATUS.in_(['Pending', 'Accepted'])
+            ).update({DriverApplication.STATUS: "Rejected"}, synchronize_session='fetch')
+            
+            # Log Action and Commit Database Changes
+            current_user.log_event(
+                ORG_DISABLED, 
+                f"org_id={org_id} org_name='{org_name}' action='Terminated' admin={current_user.USER_CODE} sponsors_removed={sponsor_drop_count} drivers_dropped={driver_drop_count}"
+            )
+
+            db.session.commit()
+            
+            # Send Notifications
+            notification_message = (
+                f"The organization **{org_name}** has been permanently disabled by the administrator. "
+                f"Your association with this organization, including all driver points, has been terminated."
+            )
+            
+            for user_code in driver_codes_notified + sponsor_codes_notified:
+                 try:
+                     Notification.create_notification(
+                         recipient_code=user_code,
+                         sender_code=current_user.USER_CODE,
+                         message=notification_message
+                     )
+                 except Exception as e:
+                     print(f"Failed to notify user {user_code}: {e}")
+            
+            flash(f"Organization '{org_name}' (ID: {org_id}) successfully disabled. {sponsor_drop_count} sponsors removed, {driver_drop_count} drivers dropped, and {terminated_apps_count} applications terminated.", "success")
+            
+        except Exception as e:
+            db.session.rollback()
+            # In the production environment, log the full traceback here
+            flash(f"A critical error occurred while disabling the organization. No changes were saved. Error: {e}", "danger")
+        
+        return redirect(url_for('administrator_bp.disable_organization'))
+        
+    return render_template(
+        'administrator/disable_organizations.html',
+        organizations=active_organizations
     )
