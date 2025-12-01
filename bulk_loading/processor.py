@@ -61,9 +61,6 @@ class BulkLoadProcessor:
                 record_type = data[0].upper()
                 self.results['total'] += 1
                 
-                # Debug logging
-                self._log_result(line_num, record_type, 'Debug', str(data), f'Processing line: {line.strip()} -> Split into {len(data)} parts: {data}')
-                
                 try:
                     if self.mode == 'admin':
                         self._process_admin_record(record_type, data, line_num)
@@ -148,35 +145,35 @@ class BulkLoadProcessor:
             
         elif record_type == 'S':
             # Create sponsor - sponsors can create other sponsors in their own organization
-            # Format can be: S|FirstName|LastName|Email OR S||FirstName|LastName|Email (with empty org field)
-            if len(data) >= 4:
-                if len(data) == 4:
-                    # S|FirstName|LastName|Email
-                    first_name, last_name, email = data[1], data[2], data[3]
-                else:
-                    # S||FirstName|LastName|Email (skip empty org field)
-                    first_name, last_name, email = data[2], data[3], data[4]
+            # Format MUST be: S||FirstName|LastName|Email (with empty org field)
+            if len(data) >= 5 and data[1] == '':
+                # S||FirstName|LastName|Email (correct format with empty org field)
+                first_name, last_name, email = data[2], data[3], data[4]
                 self._create_sponsor_by_sponsor(first_name, last_name, email, line_num)
             else:
                 self.results['failed'] += 1
-                self._log_result(line_num, record_type, 'Failed', str(data), 
-                               'Insufficient data for sponsor record. Format: S|FirstName|LastName|Email or S||FirstName|LastName|Email')
+                if len(data) < 5:
+                    self._log_result(line_num, record_type, 'Failed', str(data), 
+                                   'Insufficient data for sponsor record. Format required: S||FirstName|LastName|Email')
+                else:
+                    self._log_result(line_num, record_type, 'Failed', str(data), 
+                                   'Invalid format for sponsor record. Format required: S||FirstName|LastName|Email (note the two pipes)')
                 
         elif record_type == 'D':
             # Create driver - sponsors can create drivers for their organization  
-            # Format can be: D|FirstName|LastName|Email OR D||FirstName|LastName|Email (with empty org field)
-            if len(data) >= 4:
-                if len(data) == 4:
-                    # D|FirstName|LastName|Email
-                    first_name, last_name, email = data[1], data[2], data[3]
-                else:
-                    # D||FirstName|LastName|Email (skip empty org field)
-                    first_name, last_name, email = data[2], data[3], data[4]
+            # Format MUST be: D||FirstName|LastName|Email (with empty org field)
+            if len(data) >= 5 and data[1] == '':
+                # D||FirstName|LastName|Email (correct format with empty org field)
+                first_name, last_name, email = data[2], data[3], data[4]
                 self._create_driver_by_sponsor(first_name, last_name, email, line_num)
             else:
                 self.results['failed'] += 1
-                self._log_result(line_num, record_type, 'Failed', str(data), 
-                               'Insufficient data for driver record. Format: D|FirstName|LastName|Email or D||FirstName|LastName|Email')
+                if len(data) < 5:
+                    self._log_result(line_num, record_type, 'Failed', str(data), 
+                                   'Insufficient data for driver record. Format required: D||FirstName|LastName|Email')
+                else:
+                    self._log_result(line_num, record_type, 'Failed', str(data), 
+                                   'Invalid format for driver record. Format required: D||FirstName|LastName|Email (note the two pipes)')
                 
         else:
             self.results['failed'] += 1
