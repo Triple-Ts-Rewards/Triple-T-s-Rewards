@@ -70,16 +70,70 @@ D|Triple T's Trucking|John|Doe|john.doe@gmail.com</pre>
                     <li>Drivers created: {{ results.drivers_created }}</li>
                 </ul>
             </div>
-            
-            {% if log_filename %}
-            <p>
-                <a href="{{ url_for('bulk_loading_bp.download_log', filename=log_filename) }}" class="btn btn-success">
-                    <i class="fas fa-file-download"></i> Download Detailed Log
-                </a>
-            </p>
-            {% endif %}
         </div>
     </div>
+    
+    {% if results.log_entries %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Processing Details</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Line</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in results.log_entries %}
+                        <tr class="{% if entry.status == 'Failed' %}table-danger{% elif entry.status == 'Success' %}table-success{% elif entry.status == 'Debug' %}table-light{% endif %}">
+                            <td>{{ entry.line_num }}</td>
+                            <td>
+                                {% if entry.record_type == 'O' %}
+                                    <span class="badge badge-info">Organization</span>
+                                {% elif entry.record_type == 'S' %}
+                                    <span class="badge badge-info">Sponsor</span>
+                                {% elif entry.record_type == 'D' %}
+                                    <span class="badge badge-info">Driver</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">{{ entry.record_type }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if entry.status == 'Success' %}
+                                    <span class="text-success"><i class="fas fa-check-circle"></i> {{ entry.status }}</span>
+                                {% elif entry.status == 'Failed' %}
+                                    <span class="text-danger"><i class="fas fa-times-circle"></i> {{ entry.status }}</span>
+                                {% elif entry.status == 'Debug' %}
+                                    <span class="text-muted"><i class="fas fa-info-circle"></i> {{ entry.status }}</span>
+                                {% else %}
+                                    <span>{{ entry.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ entry.details }}</small></td>
+                            <td><small>{{ entry.message }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-3">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle"></i> 
+                    This table shows detailed results for each line processed. 
+                    Success entries show usernames and passwords generated.
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     {% endif %}
 </div>
 <p style="margin-top: 1.5rem;">
