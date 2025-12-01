@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from flask import current_app
-from models import db, User, Sponsor, Driver, Role, AuditLog, Organization, DriverApplication
+from models import db, User, Sponsor, Driver, Role, AuditLog, Organization, DriverApplication, DriverSponsorAssociation
 
 class BulkLoadProcessor:
     """
@@ -61,6 +61,9 @@ class BulkLoadProcessor:
                 record_type = data[0].upper()
                 self.results['total'] += 1
                 
+                # Debug logging
+                self._log_result(line_num, record_type, 'Debug', str(data), f'Processing line: {line.strip()} -> Split into {len(data)} parts: {data}')
+                
                 try:
                     if self.mode == 'admin':
                         self._process_admin_record(record_type, data, line_num)
@@ -68,7 +71,7 @@ class BulkLoadProcessor:
                         self._process_sponsor_record(record_type, data, line_num)
                 except Exception as e:
                     self.results['failed'] += 1
-                    self._log_result(line_num, record_type, 'Failed', str(data), str(e))
+                    self._log_result(line_num, record_type, 'Failed', str(data), f'Exception: {str(e)}')
                     db.session.rollback()
                     
             # Log the completion of bulk load operation
@@ -200,9 +203,23 @@ class BulkLoadProcessor:
         # Check if organization exists in Organizations table
         existing_org = Organization.query.filter_by(ORG_NAME=org_name).first()
         if not existing_org:
-            self.results['failed'] += 1
-            self._log_result(line_num, 'S', 'Failed', f'{first_name} {last_name} ({email})', f'Organization not found: {org_name}. Please create the organization first using an O record.')
-            return
+            # Auto-create the organization if it doesn't exist
+            try:
+                new_org = Organization(
+                    ORG_NAME=org_name,
+                    CREATED_AT=datetime.now(),
+                    STATUS='Approved'
+                )
+                db.session.add(new_org)
+                db.session.commit()
+                existing_org = new_org
+                self.results['organizations_created'] += 1
+                self._log_audit_event(0, 'organization_auto_created_via_bulk_load', f'Auto-created organization: {org_name} (ID: {new_org.ORG_ID}) for sponsor creation')
+            except Exception as e:
+                db.session.rollback()
+                self.results['failed'] += 1
+                self._log_result(line_num, 'S', 'Failed', f'{first_name} {last_name} ({email})', f'Could not create organization "{org_name}": {str(e)}')
+                return
             
         # Multiple sponsors per organization are now allowed - no restriction needed
         
@@ -218,7 +235,6 @@ class BulkLoadProcessor:
                 LNAME=last_name,
                 EMAIL=email,
                 CREATED_AT=datetime.now(),
-                POINTS=0,
                 wants_point_notifications=True,
                 wants_order_notifications=True,
                 wants_security_notifications=True,
@@ -275,9 +291,23 @@ class BulkLoadProcessor:
         # Check if the organization exists
         existing_org = Organization.query.filter_by(ORG_NAME=org_name).first()
         if not existing_org:
-            self.results['failed'] += 1
-            self._log_result(line_num, 'D', 'Failed', f'{first_name} {last_name} ({email})', f'Organization not found: {org_name}. Please create the organization first using an O record.')
-            return
+            # Auto-create the organization if it doesn't exist
+            try:
+                new_org = Organization(
+                    ORG_NAME=org_name,
+                    CREATED_AT=datetime.now(),
+                    STATUS='Approved'
+                )
+                db.session.add(new_org)
+                db.session.commit()
+                existing_org = new_org
+                self.results['organizations_created'] += 1
+                self._log_audit_event(0, 'organization_auto_created_via_bulk_load', f'Auto-created organization: {org_name} (ID: {new_org.ORG_ID}) for driver creation')
+            except Exception as e:
+                db.session.rollback()
+                self.results['failed'] += 1
+                self._log_result(line_num, 'D', 'Failed', f'{first_name} {last_name} ({email})', f'Could not create organization "{org_name}": {str(e)}')
+                return
         try:
             # Generate a unique username
             username = self._generate_unique_username(first_name, last_name)
@@ -290,7 +320,6 @@ class BulkLoadProcessor:
                 LNAME=last_name,
                 EMAIL=email,
                 CREATED_AT=datetime.now(),
-                POINTS=0,
                 wants_point_notifications=True,
                 wants_order_notifications=True,
                 wants_security_notifications=True,
@@ -314,13 +343,23 @@ class BulkLoadProcessor:
             db.session.add(new_driver)
             db.session.commit()
             
+            # Create the DriverSponsorAssociation to link driver with organization
+            driver_org_association = DriverSponsorAssociation(
+                driver_id=new_user.USER_CODE,
+                ORG_ID=existing_org.ORG_ID,
+                points=0
+            )
+            
+            db.session.add(driver_org_association)
+            db.session.commit()
+            
             # Log the event
             self._log_audit_event(new_user.USER_CODE, 'driver_created_via_bulk_load', 
-                                 f'Created driver: {first_name} {last_name} for organization: {org_name}')
+                                 f'Created driver: {first_name} {last_name} for organization: {org_name} (ORG_ID: {existing_org.ORG_ID})')
             
             self.results['success'] += 1
             self.results['drivers_created'] += 1
-            self._log_result(line_num, 'D', 'Success', f'{first_name} {last_name} ({email})', f'Username: {username}, Password: {password}')
+            self._log_result(line_num, 'D', 'Success', f'{first_name} {last_name} ({email})', f'Username: {username}, Password: {password}, Organization: {org_name}')
         except Exception as e:
             db.session.rollback()
             self.results['failed'] += 1
@@ -338,15 +377,16 @@ class BulkLoadProcessor:
         # Check if organization already exists
         existing_org = Organization.query.filter_by(ORG_NAME=org_name).first()
         if existing_org:
-            self.results['failed'] += 1
-            self._log_result(line_num, 'O', 'Failed', org_name, f'Organization already exists: {org_name}')
+            self.results['success'] += 1  # Count as success, not failure
+            self._log_result(line_num, 'O', 'Success', org_name, f'Organization already exists: {org_name} (ID: {existing_org.ORG_ID}) - Skipping creation')
             return
         
         try:
             # Create new organization
             new_org = Organization(
                 ORG_NAME=org_name,
-                CREATED_AT=datetime.now()
+                CREATED_AT=datetime.now(),
+                STATUS='Approved'
             )
             
             db.session.add(new_org)
@@ -571,20 +611,32 @@ class BulkLoadProcessor:
                 ORG_ID=organization.ORG_ID,  # Link to the sponsor's organization
                 STATUS="Accepted",  # Automatically accept since sponsor created the driver
                 REASON="Created via bulk loading by sponsor",
-                APPLIED_AT=datetime.utcnow()
+                APPLIED_AT=datetime.utcnow(),
+                RESPONDED_AT=datetime.utcnow(),
+                SPONSOR_RESPONSIBLE_ID=current_user.USER_CODE
             )
             
             db.session.add(driver_application)
             db.session.commit()
             
+            # Create the DriverSponsorAssociation to link driver with organization
+            driver_org_association = DriverSponsorAssociation(
+                driver_id=new_user.USER_CODE,
+                ORG_ID=organization.ORG_ID,
+                points=0
+            )
+            
+            db.session.add(driver_org_association)
+            db.session.commit()
+            
             # Log the event
             self._log_audit_event(new_user.USER_CODE, 'driver_created_by_sponsor', 
-                                 f'Sponsor {current_user.USERNAME} created driver: {first_name} {last_name} for organization: {org_name}')
+                                 f'Sponsor {current_user.USERNAME} created driver: {first_name} {last_name} for organization: {org_name} (ORG_ID: {organization.ORG_ID})')
             
             self.results['success'] += 1
             self.results['drivers_created'] += 1
             self._log_result(line_num, 'D', 'Success', f'{first_name} {last_name} ({email})', 
-                           f'Username: {username}, Password: {password}')
+                           f'Username: {username}, Password: {password}, Organization: {org_name}')
         except Exception as e:
             db.session.rollback()
             self.results['failed'] += 1

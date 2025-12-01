@@ -3,13 +3,13 @@
 # Organization names are not needed - all users will be created under your organization
 
 # Format descriptions:
-# S|First Name|Last Name|Email Address
+# S||First Name|Last Name|Email Address
 # - Create a sponsor user for your organization (only one sponsor allowed per organization)
 
-# D|First Name|Last Name|Email Address  
+# D||First Name|Last Name|Email Address  
 # - Create a driver user for your organization
 
 # Examples:
-# S|Jane|Smith|jane.smith@company.com
-# D|John|Doe|john.doe@company.com
-# D|Alice|Johnson|alice.johnson@company.com
+# S||Jane|Smith|jane.smith@company.com
+# D||John|Doe|john.doe@company.com
+# D||Alice|Johnson|alice.johnson@company.com
