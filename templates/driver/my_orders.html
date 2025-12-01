@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fa-solid fa-clock-rotate-left"></i> My Order History</h2>
+        <a href="{{ url_for('driver_bp.dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+    </div>
+
+    {% if orders %}
+    <div class="row">
+        {% for order in orders %}
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">Order #{{ order.SALE_ID }}</span>
+                    <span class="text-muted">{{ order.CREATED_AT.strftime('%b %d, %Y') }}</span>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title text-primary">{{ order.POINTS_SPENT }} Points</h5>
+                    <hr>
+                    <h6>Items:</h6>
+                    <ul class="list-group list-group-flush">
+                        {% for item in order.items_list %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span>{{ item.title }}</span>
+                            <span class="badge bg-secondary rounded-pill">{{ item.quantity }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="card-footer text-muted bg-light">
+                    <small>Purchased from: {{ order.organization.ORG_NAME if order.organization else 'Unknown Org' }}</small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center py-5">
+        <i class="fa-solid fa-basket-shopping fa-3x mb-3"></i>
+        <h4>No Past Orders</h4>
+        <p>You haven't spent any points yet. Visit the store to make your first purchase!</p>
+        <a href="{{ url_for('driver_bp.redirect_to_store') }}" class="btn btn-primary mt-3">Go to Store</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

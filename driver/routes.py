@@ -3,9 +3,10 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from common.decorators import role_required, unauthenticated_only
 from common.logging import DRIVER_POINTS, log_audit_event, LOGIN_EVENT
-from models import Role, AuditLog, User, db, Sponsor, DriverApplication, Address, StoreSettings, Driver, Notification, LOCKOUT_ATTEMPTS, Organization, DriverSponsorAssociation, PointRequest
+from models import Role, AuditLog, User, db, Sponsor, DriverApplication, Address, StoreSettings, Driver, Notification, LOCKOUT_ATTEMPTS, Organization, DriverSponsorAssociation, PointRequest, DriverSale
 from extensions import bcrypt
 from datetime import datetime
+import json
 
 # Blueprint for driver-related routes
 driver_bp = Blueprint('driver_bp', __name__, template_folder="../templates")
@@ -555,3 +556,23 @@ def application_history():
     ).all()
     
     return render_template("driver/application_history.html", applications=applications)
+
+@driver_bp.route('/my_orders')
+@login_required
+@role_required(Role.DRIVER)
+def my_orders():
+    # Fetch all sales where this user is the driver
+    orders = DriverSale.query.filter_by(DRIVER_ID=current_user.USER_CODE)\
+        .order_by(DriverSale.CREATED_AT.desc()).all()
+
+    # Process JSON
+    for order in orders:
+        if order.DETAILS:
+            try:
+                order.items_list = json.loads(order.DETAILS)
+            except:
+                order.items_list = []
+        else:
+            order.items_list = []
+
+    return render_template('driver/my_orders.html', orders=orders)
