@@ -14,6 +14,7 @@ import secrets
 import string
 from io import StringIO
 import csv
+import json
 
 # Blueprint for sponsor-related routes
 sponsor_bp = Blueprint('sponsor_bp', __name__, template_folder="../templates")
@@ -1220,3 +1221,28 @@ def get_points_given_this_week(sponsor_id):
     ).all()
     total_points = sum(log.POINTS for log in logs)
     return total_points
+
+@sponsor_bp.route('/orders')
+@login_required
+@role_required(Role.SPONSOR, allow_admin=True)
+def order_history():
+    sponsor = Sponsor.query.filter_by(USER_CODE=current_user.USER_CODE).first()
+    if not sponsor or not sponsor.ORG_ID:
+        flash("Organization not found.", "danger")
+        return redirect(url_for('sponsor_bp.dashboard'))
+
+    # Fetch all sales for this organization, newest first
+    orders = DriverSale.query.filter_by(ORG_ID=sponsor.ORG_ID)\
+        .order_by(DriverSale.CREATED_AT.desc()).all()
+        
+    # Process the JSON details for display
+    for order in orders:
+        if order.DETAILS:
+            try:
+                order.items_list = json.loads(order.DETAILS)
+            except:
+                order.items_list = []
+        else:
+            order.items_list = []
+
+    return render_template('sponsor/order_history.html', orders=orders)

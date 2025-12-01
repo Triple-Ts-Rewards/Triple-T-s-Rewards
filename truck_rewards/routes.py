@@ -47,7 +47,6 @@ def get_ebay_access_token():
         print(f"Error getting eBay access token: {e}")
         return None
 
-# --- Main Store Route (No longer needed, but can be kept or removed) ---
 @rewards_bp.route("/products/<int:sponsor_id>")
 @login_required
 def products(sponsor_id):

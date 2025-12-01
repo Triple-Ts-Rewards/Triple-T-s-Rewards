@@ -29,7 +29,7 @@ function initializeStore(sponsorId, productsUrl) {
       const minPriceInput = document.getElementById('min-price');
       const maxPriceInput = document.getElementById('max-price');
 
-      loadProducts(sponsorId, searchInput.value, minPriceInput.value, maxPriceInput.value);
+      loadProducts(sponsorId, productsUrl, searchInput.value, minPriceInput.value, maxPriceInput.value);
     });
   }
 }
@@ -37,7 +37,7 @@ function initializeStore(sponsorId, productsUrl) {
 async function loadProducts(sponsorId, productsUrl, query = '', minPrice = '', maxPrice = '', page = 1) {
   const container = document.getElementById('products');
   if (!container) {
-    console.error("❌ No #products container found — aborting loadProducts()");
+    console.error(" No #products container found — aborting loadProducts()");
     return;
   }
 
@@ -45,7 +45,6 @@ async function loadProducts(sponsorId, productsUrl, query = '', minPrice = '', m
     const sortBy = document.getElementById('current_sort').value;
     const limit = 20;
 
-    // ✅ Use the passed-in productsUrl or fallback
     const baseUrl = productsUrl || document.getElementById("products_url")?.value || `/truck-rewards/products/${sponsorId}`;
     let url = `${baseUrl}?page=${page}`;
 
@@ -53,7 +52,7 @@ async function loadProducts(sponsorId, productsUrl, query = '', minPrice = '', m
     if (minPrice) url += `&min_price=${encodeURIComponent(minPrice)}`;
     if (maxPrice) url += `&max_price=${encodeURIComponent(maxPrice)}`;
 
-    console.log("🔎 Fetching products from:", url);
+    console.log(" Fetching products from:", url);
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -75,7 +74,7 @@ async function loadProducts(sponsorId, productsUrl, query = '', minPrice = '', m
       return;
     }
 
-    // ✅ Sorting logic
+    //  Sorting logic
     switch (sortBy) {
       case 'name_asc':
         products.sort((a, b) => a.title.localeCompare(b.title));
@@ -91,7 +90,7 @@ async function loadProducts(sponsorId, productsUrl, query = '', minPrice = '', m
         break;
     }
 
-    // ✅ Render products
+    //  Render products
     products.forEach(p => {
       const card = document.createElement("div");
       card.className = "product-card";
@@ -100,7 +99,6 @@ async function loadProducts(sponsorId, productsUrl, query = '', minPrice = '', m
       card.innerHTML = `
         <img src="${imageUrl}" alt="${p.title}">
         <div class="title">${p.title}</div>
-        <div class="price">$${p.price.toFixed(2)}</div>
         <div class="points">${p.pointsEquivalent} points</div>
         <div class="product-actions">
           <button class="add-to-cart-btn" data-product='${productData}'>Add to Cart</button>
@@ -109,7 +107,7 @@ async function loadProducts(sponsorId, productsUrl, query = '', minPrice = '', m
       container.appendChild(card);
     });
 
-    // ✅ Render pagination below products
+    //  Render pagination below products
     renderPagination(currentPage, totalPages, sponsorId, query, minPrice, maxPrice);
 
     // Smooth scroll back to top

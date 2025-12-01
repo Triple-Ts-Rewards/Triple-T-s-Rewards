@@ -11,27 +11,27 @@
        Layout & Typography
     ------------------------------ */
     body {
-      color: #f8f9fa;
+      color: var(--text); /* Use theme variable */
     }
 
     h1 {
       font-size: 2rem;
       font-weight: 700;
       margin-bottom: 0.5rem;
-      color: #f8f9fa;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      color: var(--text); /* Use theme variable */
+      text-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Softer shadow */
     }
 
     p {
-      color: #adb5bd;
+      color: var(--muted); /* Use theme variable */
     }
 
     /* ------------------------------
-       Filter Bar Styling
+       Filter Bar Styling (The Fix)
     ------------------------------ */
     #search-form {
-      background-color: #1f1f1f;
-      border: 1px solid #2b2b2b;
+      background-color: var(--surface); /* Adapts to Light/Dark */
+      border: 1px solid var(--border);
       border-radius: 12px;
       padding: 1rem 1.25rem;
       display: flex;
@@ -39,6 +39,7 @@
       gap: 1rem;
       align-items: flex-end;
       justify-content: space-between;
+      box-shadow: var(--shadow-raised); /* Use theme shadow */
     }
 
     .input-group {
@@ -51,7 +52,7 @@
     .input-group label {
       font-weight: 600;
       font-size: 0.9rem;
-      color: #f1f3f5;
+      color: var(--text); /* Readable in both modes */
     }
 
     .price-range {
@@ -59,25 +60,28 @@
       gap: 0.5rem;
     }
 
-    .price-range input {
+    /* Input Fields */
+    .price-range input,
+    #search-input {
       width: 100%;
-      background-color: #2a2a2a;
-      color: #f8f9fa;
-      border: 1px solid #444;
+      background-color: var(--bg); /* White in light mode, Dark in dark mode */
+      color: var(--text);
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 0.35rem 0.5rem;
     }
-
-    #search-input {
-      background-color: #2a2a2a;
-      color: #f8f9fa;
-      border: 1px solid #444;
-      border-radius: 6px;
-      padding: 0.35rem 0.5rem;
+    
+    /* Focus states for better UX */
+    .price-range input:focus,
+    #search-input:focus {
+        outline: none;
+        border-color: var(--brand-accent);
+        box-shadow: 0 0 0 2px rgba(134, 194, 50, 0.2);
     }
 
     .btn-primary {
-      background-color: #0d6efd;
+      background-color: var(--brand); /* Use brand color */
+      color: var(--text-on-brand);    /* Ensures contrast */
       border: none;
       border-radius: 6px;
       font-weight: 600;
@@ -85,7 +89,7 @@
     }
 
     .btn-primary:hover {
-      background-color: #0b5ed7;
+      background-color: var(--brand-accent);
     }
 
     /* ------------------------------
@@ -97,7 +101,7 @@
     }
 
     a.sort-link {
-      color: #0d6efd;
+      color: var(--link-color); /* Accessible link color */
       text-decoration: none;
       font-weight: 600;
       padding: 0.35rem 0.55rem;
@@ -107,12 +111,13 @@
     }
 
     a.sort-link:hover {
-      background-color: #2a2a2a;
+      background-color: var(--sidebar-hover-bg); /* Use theme hover */
+      color: var(--link-color-hover);
     }
 
     a.sort-link.active {
-      background-color: #0d6efd;
-      color: white;
+      background-color: var(--brand);
+      color: var(--text-on-brand);
     }
 
     a.sort-link .arrow-up,
@@ -137,17 +142,21 @@
     }
 
     .product-card {
-      background-color: #1f1f1f;
+      background-color: var(--surface); /* Use theme surface */
+      border: 1px solid var(--border);
       border-radius: 16px;
       padding: 1rem;
       text-align: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      box-shadow: var(--shadow-raised);
       transition: transform 0.15s ease, box-shadow 0.15s ease;
+      display: flex;
+      flex-direction: column;
     }
 
     .product-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      box-shadow: var(--shadow-header);
+      border-color: var(--brand-accent);
     }
 
     .product-card img {
@@ -155,28 +164,22 @@
       height: 180px;
       object-fit: contain;
       border-radius: 8px;
-      background-color: #2a2a2a;
+      background-color: #fff; /* Images usually look best on white */
+      padding: 0.5rem;        /* Add padding if forcing white bg */
       margin-bottom: 0.75rem;
+      border: 1px solid var(--border);
     }
 
     .product-card .title {
       font-weight: 600;
       font-size: 1rem;
-      color: #f8f9fa;
+      color: var(--text);
       margin-bottom: 0.4rem;
       min-height: 2.4em;
     }
 
-    .product-card .price {
-      font-size: 1rem;
-      color: #8be68b;
-      font-weight: 600;
-      margin: 0; /* tighten gap below price */
-      line-height: 1.1;
-    }
-
     .product-card .points {
-      color: #adb5bd;
+      color: var(--muted);
       margin: 0.1rem 0 0.6rem 0;
       font-size: 0.9rem;
       line-height: 1.1;
@@ -189,21 +192,23 @@
       gap: 0.6rem;
       width: 100%;
       margin: 0 auto;
+      margin-top: auto;
     }
 
     .product-actions button {
-      background-color: #9acd32; /* same bright green as Search/View Cart */
-      color: #1f1f1f;
+      background-color: var(--brand);
+      color: var(--text-on-brand);
       border: none;
       padding: 0.45rem 0.9rem;
       border-radius: 6px;
       cursor: pointer;
       font-weight: 600;
       transition: background-color 0.15s ease, transform 0.1s ease;
+      width: 90%;
     }
 
     .product-actions button:hover {
-      background-color: #b7e14f; /* slightly lighter on hover */
+      background-color: var(--brand-accent);
       transform: translateY(-2px);
     }
 
@@ -233,9 +238,9 @@
     }
 
     .pagination-container button {
-      background-color: #1f1f1f;
-      color: #f8f9fa;
-      border: 1px solid #444;
+      background-color: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 0.4rem 0.75rem;
       cursor: pointer;
@@ -244,24 +249,26 @@
     }
 
     .pagination-container button:hover {
-      background-color: #0d6efd;
-      color: white;
+      background-color: var(--brand);
+      color: var(--text-on-brand);
+      border-color: var(--brand);
     }
 
     .pagination-container button.active {
-      background-color: #0d6efd;
-      color: white;
-      border-color: #0d6efd;
+      background-color: var(--brand);
+      color: var(--text-on-brand);
+      border-color: var(--brand);
     }
 
     .pagination-container button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+      background-color: var(--bg); /* Disabled state */
     }
 
     .pagination-container span {
       padding: 0.4rem 0.6rem;
-      color: #888;
+      color: var(--muted);
       user-select: none;
     }
   </style>
