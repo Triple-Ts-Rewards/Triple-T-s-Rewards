@@ -11,33 +11,34 @@
 {% endblock %}
 
 {% block content %}
-  <div class="container">
-    <div class="card">
-      <div style="display:flex; align-items:center; gap:.75rem; margin-bottom:1rem;">
-        <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn btn-outline" aria-label="Back to Administrator Dashboard">
-          ← Back
-        </a>
-        <h1 style="margin:0;">Inactive Users</h1>
-      </div>
+  <div class="page-header">
+    <h1>Inactive Users</h1>
+  </div>
 
-      <form id="filter-form" method="GET" action="{{ url_for('administrator_bp.disabled_accounts') }}" style="display:flex; flex-direction:column; gap:.5rem; margin-bottom:1rem;">
+  <div class="card-elevated">
+    <div class="org-card-body">
+      <a href="{{ url_for('administrator_bp.dashboard') }}" class="btn-dash" aria-label="Back to Administrator Dashboard" style="margin-bottom:1rem; display:inline-flex;">
+        ← Back
+      </a>
+
+      <form id="filter-form" method="GET" action="{{ url_for('administrator_bp.disabled_accounts') }}" style="display:flex; flex-direction:column; gap:1rem; margin-bottom:1.5rem;">
         <div style="display:flex; align-items:center; gap:.5rem;">
-          <input type="text" name="search" placeholder="Search by username..." value="{{ request.args.get('search', '') }}" aria-label="Search by username" class="input" style="flex:1; padding:.5rem;">
-          <button type="submit" class="btn btn-outline">Search</button>
-          <button id="filter-toggle" type="button" class="btn btn-outline" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center;" title="Filter by role" aria-label="Filter by role">
+          <input type="text" name="search" placeholder="Search by username..." value="{{ request.args.get('search', '') }}" aria-label="Search by username" class="input" style="flex:1;">
+          <button type="submit" class="btn-outline btn">Search</button>
+          <button id="filter-toggle" type="button" class="btn-outline btn" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center;" title="Filter by role" aria-label="Filter by role">
             <i class="fa fa-filter"></i>
           </button>
         </div>
 
-        <div id="role-filter" style="display:none; flex-wrap:wrap; gap:.5rem; background:#f7f7f7; padding:1rem; border-radius:6px;">
-          <select name="role" class="input" style="padding:.5rem;">
+        <div id="role-filter" style="display:none; flex-wrap:wrap; gap:.5rem; background: var(--surface); padding:1rem; border-radius:8px; border:1px solid var(--border);">
+          <select name="role" class="input">
             <option value="">All Roles</option>
             <option value="admin" {% if request.args.get('role') == 'admin' %}selected{% endif %}>Admin</option>
             <option value="sponsor" {% if request.args.get('role') == 'sponsor' %}selected{% endif %}>Sponsor</option>
             <option value="driver" {% if request.args.get('role') == 'driver' %}selected{% endif %}>Driver</option>
           </select>
-          <button type="submit" class="btn btn-outline">Apply</button>
-          <a href="{{ url_for('administrator_bp.disabled_accounts') }}" class="btn btn-outline">Reset</a>
+          <button type="submit" class="btn-outline btn">Apply</button>
+          <a href="{{ url_for('administrator_bp.disabled_accounts') }}" class="btn-outline btn">Reset</a>
         </div>
       </form>
 
@@ -52,6 +53,7 @@
       </script>
 
       {% if accounts %}
+        <div class="table-wrapper">
         <table aria-describedby="inactive-users-caption">
           <caption id="inactive-users-caption" class="text-muted" style="text-align:left; padding:.5rem 0;">
             List of currently inactive users
@@ -63,7 +65,7 @@
               <th scope="col">Email</th>
               <th scope="col">Type</th>
               <th scope="col">Joined</th>
-              <th scope="col" style="width: 120px;">Actions</th>
+              <th scope="col" style="width: 140px;">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -72,31 +74,33 @@
               <td><strong>{{ user.USERNAME }}</strong></td>
               <td>{{ user.FNAME }} {{ user.LNAME }}</td>
               <td>{{ user.EMAIL }}</td>
-              <td><span class="badge">{{ user.USER_TYPE }}</span></td>
+              <td><span class="badge-outline-small">{{ user.USER_TYPE }}</span></td>
               <td>{{ user.CREATED_AT.strftime('%Y-%m-%d %H:%M') }}</td>
-              <td>
+              <td class="actions-cell">
                 {% if user.USER_CODE != current_user.USER_CODE %}
-                <form
-                  method="POST"
-                  action="{{ url_for('administrator_bp.enable_user', user_id=user.USER_CODE) }}"
-                  onsubmit="return confirm('Are you sure you want to ENABLE {{ user.USERNAME }}? This will set the account to active.');"
-                  style="display:inline-block; margin:0;"
-                >
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button
-                    type="submit"
-                    class="btn btn-success"
-                    aria-label="Enable user {{ user.USERNAME }}"
+                <div class="table-action-column">
+                  <form
+                    method="POST"
+                    action="{{ url_for('administrator_bp.enable_user', user_id=user.USER_CODE) }}"
+                    onsubmit="return confirm('Are you sure you want to ENABLE {{ user.USERNAME }}? This will set the account to active.');"
                   >
-                    Enable
-                  </button>
-                </form>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button
+                      type="submit"
+                      class="table-btn table-btn-accent"
+                      aria-label="Enable user {{ user.USERNAME }}"
+                    >
+                      Enable
+                    </button>
+                  </form>
+                </div>
                 {% endif %}
               </td>
             </tr>
           {% endfor %}
           </tbody>
         </table>
+        </div>
       {% else %}
         <div class="box" role="status">
           <p class="text-muted" style="margin:0;">No deactivated users found.</p>

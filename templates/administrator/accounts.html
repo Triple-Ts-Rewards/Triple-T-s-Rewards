@@ -1,6 +1,3 @@
-Administrator/accounts.html
-
-
 {% extends "base.html" %}
 
 {% block title %}Active Users - TTT Rewards{% endblock %}
@@ -68,6 +65,7 @@ Administrator/accounts.html
 
           <!-- User Table -->
           {% if accounts %}
+            <div class="table-wrapper" aria-live="polite">
             <table aria-describedby="active-users-caption">
               <caption id="active-users-caption" class="text-muted" style="text-align:left; padding:.5rem 0;">
                 List of currently active users
@@ -96,8 +94,8 @@ Administrator/accounts.html
 
                   <td>{{ user.CREATED_AT.strftime('%Y-%m-%d %H:%M') }}</td>
 
-                  <td>
-                    <div style="display:flex; gap:.5rem; align-items:center;">
+                  <td class="actions-cell">
+                    <div class="table-action-column">
 
                       {% if user.USER_CODE != current_user.USER_CODE %}
                       <form method="POST" action="{{ url_for('impersonation_bp.start_impersonation', target_id=user.USER_CODE) }}">
@@ -132,6 +130,7 @@ Administrator/accounts.html
               </tbody>
 
             </table>
+            </div>
 
           {% else %}
             <div class="empty-state">
