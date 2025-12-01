@@ -1455,16 +1455,60 @@ body:not(.has-sidebar) .apply-form {
 
 /* Gradient header */
 .card-header-accent {
-  background: linear-gradient(135deg, var(--surface) 0%, var(--brand-accent) 100%);
-  color: #fff;
-  padding: 1.5rem;
-  border-radius: 14px 14px 14px 14px;
+  --header-highlight: rgba(255, 255, 255, 0.45);
+  background: linear-gradient(120deg, rgba(239, 247, 227, 0.96) 0%, rgba(198, 228, 150, 0.92) 48%, rgba(123, 176, 46, 0.9) 100%);
+  color: #14210c;
+  padding: 1.75rem 2rem;
+  border-radius: 18px;
+  border: 1px solid rgba(134, 194, 50, 0.28);
+  box-shadow: 0 12px 26px rgba(134, 194, 50, 0.14);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
 }
 
-@media (prefers-color-scheme: dark) {
-  .card-header-accent {
-    background: linear-gradient(135deg, #2f3136 0%, var(--brand-accent) 100%);
-  }
+.card-header-accent::before {
+  content: "";
+  position: absolute;
+  inset: -30% -25% auto;
+  height: 180%;
+  background: radial-gradient(circle at 25% -20%, rgba(255, 255, 255, 0.65), transparent 60%);
+  opacity: 0.65;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.card-header-accent::after {
+  content: "";
+  position: absolute;
+  left: 2rem;
+  bottom: 1.4rem;
+  width: 60px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--header-highlight);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.25);
+  opacity: 0.6;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.card-header-accent > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="dark"] .card-header-accent {
+  background: linear-gradient(135deg, #2f3136 0%, var(--brand-accent) 100%);
+  color: var(--text-on-brand);
+  border: none;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  isolation: auto;
+}
+
+[data-theme="dark"] .card-header-accent::before,
+[data-theme="dark"] .card-header-accent::after {
+  display: none;
 }
 
 /* Card interaction */
